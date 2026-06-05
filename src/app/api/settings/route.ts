@@ -11,8 +11,9 @@ export async function GET() {
     })
 
     const wcConnected = !!(settingsMap.wc_store_url && settingsMap.wc_consumer_key && settingsMap.wc_consumer_secret)
+    const lastSync = settingsMap.wc_last_sync || null
 
-    return NextResponse.json({ ...settingsMap, wcConnected: String(wcConnected) })
+    return NextResponse.json({ ...settingsMap, wcConnected: String(wcConnected), wc_last_sync: lastSync })
   } catch (error) {
     console.error('Settings GET error:', error)
     return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 })
@@ -44,15 +45,21 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// POST with action="test_connection": Test WC connection and sync
+// POST with actions: test_connection, disconnect
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { action, store_url, consumer_key, consumer_secret } = body
+    const { action } = body
+
+    if (action === 'disconnect') {
+      return handleDisconnect()
+    }
 
     if (action !== 'test_connection') {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
+
+    const { store_url, consumer_key, consumer_secret } = body
 
     if (!store_url || !consumer_key || !consumer_secret) {
       return NextResponse.json({ error: 'Store URL, Consumer Key, and Consumer Secret are required' }, { status: 400 })
@@ -90,7 +97,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: errorMessage })
     }
 
-    const orders = await response.json() as Array<Record<string, unknown>>
+    const orders = (await response.json()) as Array<Record<string, unknown>>
     const totalCount = response.headers.get('X-WP-Total') || '0'
     console.log(`✅ WC connection OK — ${orders.length} orders fetched, ${totalCount} total`)
 
@@ -133,7 +140,7 @@ export async function POST(request: NextRequest) {
       })))
 
       const wcStatus = (order.status as string) || 'pending'
-      const paymentStatus = (order.date_paid ? 'paid' : mapPaymentStatus(wcStatus))
+      const paymentStatus = order.date_paid ? 'paid' : mapPaymentStatus(wcStatus)
 
       await db.wooCommerceOrder.upsert({
         where: { wooOrderId: wooId },
@@ -209,10 +216,15 @@ export async function POST(request: NextRequest) {
     await db.systemSettings.upsert({ where: { key: 'wc_consumer_key' }, update: { value: consumer_key }, create: { key: 'wc_consumer_key', value: consumer_key } })
     await db.systemSettings.upsert({ where: { key: 'wc_consumer_secret' }, update: { value: consumer_secret }, create: { key: 'wc_consumer_secret', value: consumer_secret } })
 
+    // Save last sync time
+    const syncTime = new Date().toISOString()
+    await db.systemSettings.upsert({ where: { key: 'wc_last_sync' }, update: { value: syncTime }, create: { key: 'wc_last_sync', value: syncTime } })
+
     return NextResponse.json({
       success: true,
       count: syncedCount,
       totalOrders: parseInt(totalCount, 10),
+      lastSync: syncTime,
     })
   } catch (error: unknown) {
     console.error('Test connection error:', error)
@@ -223,4 +235,18 @@ export async function POST(request: NextRequest) {
     if (isNetwork) return NextResponse.json({ success: false, error: 'Could not resolve your store URL. Please check the URL and try again.' })
     return NextResponse.json({ success: false, error: `Connection failed: ${msg}` })
   }
+}
+
+async function handleDisconnect() {
+  // Delete WC credentials but keep other settings
+  const keysToDelete = ['wc_store_url', 'wc_consumer_key', 'wc_consumer_secret', 'wc_last_sync', 'wc_webhook_secret']
+  for (const key of keysToDelete) {
+    try {
+      await db.systemSettings.delete({ where: { key } })
+    } catch {
+      // Key may not exist
+    }
+  }
+
+  return NextResponse.json({ success: true, message: 'WooCommerce disconnected successfully' })
 }

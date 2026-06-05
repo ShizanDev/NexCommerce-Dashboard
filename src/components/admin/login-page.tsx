@@ -1,106 +1,199 @@
 'use client'
 
-import { useState } from 'react'
-import { Store, Mail, Lock, User, Globe, Key, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { Store, Mail, Lock, User, Eye, EyeOff, Loader2, ArrowLeft, ShieldCheck } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { useToast } from '@/hooks/use-toast'
+import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from '@/components/ui/input-otp'
+import { toast } from 'sonner'
 import { useAppStore } from '@/stores/app-store'
 
+type AuthStep = 'choose' | 'signup-form' | 'signup-otp' | 'login-form' | 'login-otp'
+
 export function LoginPage() {
-  const [activeTab, setActiveTab] = useState('login')
+  const [step, setStep] = useState<AuthStep>('choose')
   const [loading, setLoading] = useState(false)
   const { setLoggedIn } = useAppStore()
-  const { toast } = useToast()
+  const otpRef = useRef<HTMLInputElement>(null)
 
-  // Login form state
+  // Signup form
+  const [signupName, setSignupName] = useState('')
+  const [signupEmail, setSignupEmail] = useState('')
+  const [signupPassword, setSignupPassword] = useState('')
+  const [signupConfirmPassword, setSignupConfirmPassword] = useState('')
+  const [showSignupPassword, setShowSignupPassword] = useState(false)
+  const [signupOtp, setSignupOtp] = useState('')
+
+  // Login form
   const [loginEmail, setLoginEmail] = useState('')
   const [loginPassword, setLoginPassword] = useState('')
   const [showLoginPassword, setShowLoginPassword] = useState(false)
+  const [loginOtp, setLoginOtp] = useState('')
 
-  // Setup form state
-  const [setupName, setSetupName] = useState('')
-  const [setupEmail, setSetupEmail] = useState('')
-  const [setupPassword, setSetupPassword] = useState('')
-  const [setupConfirmPassword, setSetupConfirmPassword] = useState('')
-  const [setupStoreUrl, setSetupStoreUrl] = useState('')
-  const [setupConsumerKey, setSetupConsumerKey] = useState('')
-  const [setupConsumerSecret, setSetupConsumerSecret] = useState('')
-  const [showSetupPassword, setShowSetupPassword] = useState(false)
-  const [showSecret, setShowSecret] = useState(false)
+  // OTP timer
+  const [otpCooldown, setOtpCooldown] = useState(0)
+  const [otpSentEmail, setOtpSentEmail] = useState('')
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    if (otpCooldown > 0) {
+      timerRef.current = setInterval(() => {
+        setOtpCooldown((prev) => {
+          if (prev <= 1) {
+            if (timerRef.current) clearInterval(timerRef.current)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [otpCooldown])
 
   function handleLoginSuccess(user: { id: string; email: string; name: string; role: string }) {
     localStorage.setItem(
       'wc_dashboard_session',
-      JSON.stringify({ isLoggedIn: true, name: user.name, email: user.email })
+      JSON.stringify({ isLoggedIn: true, name: user.name, email: user.email, id: user.id })
     )
     setLoggedIn(true, user.name)
-    toast({ title: 'Welcome back!', description: `Signed in as ${user.name}` })
+    toast.success(`Welcome back, ${user.name}!`)
   }
 
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault()
+  async function sendOtp(email: string, purpose: 'signup' | 'login') {
     setLoading(true)
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch('/api/auth/otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+        body: JSON.stringify({ action: 'send', email, purpose }),
       })
       const data = await res.json()
       if (data.success) {
-        handleLoginSuccess(data.user)
+        setOtpSentEmail(email)
+        setOtpCooldown(60)
+        // In production, OTP is sent via email. In sandbox mode, show it to the user.
+        if (data.otp) {
+          toast.success(`OTP sent to ${email}`, {
+            description: `Your verification code is: ${data.otp}`,
+            duration: 30000,
+          })
+        } else {
+          toast.success(`OTP sent to ${email}`)
+        }
+        return true
       } else {
-        toast({ title: 'Login failed', description: data.error, variant: 'destructive' })
+        toast.error(data.error || 'Failed to send OTP')
+        return false
       }
     } catch {
-      toast({ title: 'Error', description: 'Something went wrong', variant: 'destructive' })
+      toast.error('Something went wrong')
+      return false
     } finally {
       setLoading(false)
     }
   }
 
-  async function handleSetup(e: React.FormEvent) {
-    e.preventDefault()
-    if (setupPassword !== setupConfirmPassword) {
-      toast({ title: 'Passwords do not match', variant: 'destructive' })
-      return
-    }
-    if (setupPassword.length < 6) {
-      toast({ title: 'Password too short', description: 'Minimum 6 characters', variant: 'destructive' })
-      return
-    }
+  async function verifyAndSubmit(
+    email: string,
+    otp: string,
+    purpose: 'signup' | 'login',
+    payload: Record<string, string>,
+    onSuccess: (user: { id: string; email: string; name: string; role: string }) => void
+  ) {
     setLoading(true)
     try {
-      const res = await fetch('/api/auth/setup', {
+      // First verify OTP
+      const otpRes = await fetch('/api/auth/otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: setupEmail,
-          password: setupPassword,
-          name: setupName,
-          wc_store_url: setupStoreUrl || undefined,
-          wc_consumer_key: setupConsumerKey || undefined,
-          wc_consumer_secret: setupConsumerSecret || undefined,
-        }),
+        body: JSON.stringify({ action: 'verify', email, otp, purpose }),
+      })
+      const otpData = await otpRes.json()
+      if (!otpData.success) {
+        toast.error(otpData.error || 'Invalid OTP')
+        setLoading(false)
+        return
+      }
+
+      // Then proceed with auth action
+      const endpoint = purpose === 'signup' ? '/api/auth/setup' : '/api/auth/login'
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, otp }),
       })
       const data = await res.json()
+
       if (data.success) {
-        toast({ title: 'Account created!', description: 'You can now sign in.' })
-        setActiveTab('login')
-        setLoginEmail(setupEmail)
+        onSuccess(data.user)
       } else {
-        toast({ title: 'Setup failed', description: data.error, variant: 'destructive' })
+        toast.error(data.error || `${purpose === 'signup' ? 'Signup' : 'Login'} failed`)
       }
     } catch {
-      toast({ title: 'Error', description: 'Something went wrong', variant: 'destructive' })
+      toast.error('Something went wrong')
     } finally {
       setLoading(false)
     }
+  }
+
+  // Signup handlers
+  async function handleSignupSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (signupPassword !== signupConfirmPassword) {
+      toast.error('Passwords do not match')
+      return
+    }
+    if (signupPassword.length < 6) {
+      toast.error('Password must be at least 6 characters')
+      return
+    }
+    const sent = await sendOtp(signupEmail, 'signup')
+    if (sent) setStep('signup-otp')
+  }
+
+  function handleSignupOtpComplete() {
+    if (signupOtp.length === 6) {
+      verifyAndSubmit(
+        signupEmail,
+        signupOtp,
+        'signup',
+        { email: signupEmail, password: signupPassword, name: signupName, otp: signupOtp },
+        (user) => {
+          toast.success('Account created successfully!')
+          handleLoginSuccess(user)
+        }
+      )
+    }
+  }
+
+  // Login handlers
+  async function handleLoginSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    const sent = await sendOtp(loginEmail, 'login')
+    if (sent) setStep('login-otp')
+  }
+
+  function handleLoginOtpComplete() {
+    if (loginOtp.length === 6) {
+      verifyAndSubmit(
+        loginEmail,
+        loginOtp,
+        'login',
+        { email: loginEmail, password: loginPassword, otp: loginOtp },
+        handleLoginSuccess
+      )
+    }
+  }
+
+  const goBack = () => {
+    if (step === 'signup-form' || step === 'login-form') setStep('choose')
+    else if (step === 'signup-otp') setStep('signup-form')
+    else if (step === 'login-otp') setStep('login-form')
   }
 
   return (
@@ -121,192 +214,296 @@ export function LoginPage() {
         </CardHeader>
 
         <CardContent className="pt-4">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="setup">Create Account</TabsTrigger>
-            </TabsList>
+          {/* Step: Choose Login or Signup */}
+          {step === 'choose' && (
+            <div className="space-y-3">
+              <Button
+                className="w-full bg-emerald-600 hover:bg-emerald-700 h-12 text-base"
+                onClick={() => setStep('login-form')}
+              >
+                <Mail className="mr-2 h-4 w-4" />
+                Sign In to Your Account
+              </Button>
+              <Separator />
+              <Button
+                variant="outline"
+                className="w-full h-12 text-base"
+                onClick={() => setStep('signup-form')}
+              >
+                <User className="mr-2 h-4 w-4" />
+                Create New Account
+              </Button>
+              <p className="text-center text-xs text-muted-foreground mt-4">
+                Secure authentication with email OTP verification
+              </p>
+            </div>
+          )}
 
-            {/* Login Tab */}
-            <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="login-email">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="login-email"
-                      type="email"
-                      placeholder="admin@store.com"
-                      value={loginEmail}
-                      onChange={(e) => setLoginEmail(e.target.value)}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="login-password">Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="login-password"
-                      type={showLoginPassword ? 'text' : 'password'}
-                      placeholder="Enter your password"
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
-                      className="pl-10 pr-10"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowLoginPassword(!showLoginPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-                <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700" disabled={loading}>
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Sign In
-                </Button>
-              </form>
-            </TabsContent>
+          {/* Step: Login Form */}
+          {step === 'login-form' && (
+            <form onSubmit={handleLoginSubmit} className="space-y-4">
+              <button type="button" onClick={goBack} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <ArrowLeft className="h-3 w-3" /> Back
+              </button>
 
-            {/* Setup Tab */}
-            <TabsContent value="setup">
-              <form onSubmit={handleSetup} className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="setup-name">Full Name</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="setup-name"
-                      type="text"
-                      placeholder="Admin Name"
-                      value={setupName}
-                      onChange={(e) => setSetupName(e.target.value)}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
+              <div className="space-y-2">
+                <Label htmlFor="login-email">Email Address</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="login-email"
+                    type="email"
+                    placeholder="admin@store.com"
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    className="pl-10"
+                    required
+                  />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="setup-email">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="setup-email"
-                      type="email"
-                      placeholder="admin@store.com"
-                      value={setupEmail}
-                      onChange={(e) => setSetupEmail(e.target.value)}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="setup-password">Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="setup-password"
-                      type={showSetupPassword ? 'text' : 'password'}
-                      placeholder="Min 6 characters"
-                      value={setupPassword}
-                      onChange={(e) => setSetupPassword(e.target.value)}
-                      className="pl-10 pr-10"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowSetupPassword(!showSetupPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      {showSetupPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="setup-confirm">Confirm Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="setup-confirm"
-                      type="password"
-                      placeholder="Confirm password"
-                      value={setupConfirmPassword}
-                      onChange={(e) => setSetupConfirmPassword(e.target.value)}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
-                </div>
+              </div>
 
-                <Separator className="my-2" />
-                <p className="text-xs text-muted-foreground">WooCommerce credentials (optional, can be configured later)</p>
-
-                <div className="space-y-2">
-                  <Label htmlFor="setup-url">Store URL</Label>
-                  <div className="relative">
-                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="setup-url"
-                      type="url"
-                      placeholder="https://your-store.com"
-                      value={setupStoreUrl}
-                      onChange={(e) => setSetupStoreUrl(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
+              <div className="space-y-2">
+                <Label htmlFor="login-password">Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="login-password"
+                    type={showLoginPassword ? 'text' : 'password'}
+                    placeholder="Enter your password"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    className="pl-10 pr-10"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowLoginPassword(!showLoginPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="setup-key">Consumer Key</Label>
-                    <div className="relative">
-                      <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="setup-key"
-                        type="text"
-                        placeholder="ck_xxx"
-                        value={setupConsumerKey}
-                        onChange={(e) => setSetupConsumerKey(e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="setup-secret">Consumer Secret</Label>
-                    <div className="relative">
-                      <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="setup-secret"
-                        type={showSecret ? 'text' : 'password'}
-                        placeholder="cs_xxx"
-                        value={setupConsumerSecret}
-                        onChange={(e) => setSetupConsumerSecret(e.target.value)}
-                        className="pl-10 pr-8"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowSecret(!showSecret)}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {showSecret ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                      </button>
-                    </div>
-                  </div>
-                </div>
+              </div>
 
-                <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700" disabled={loading}>
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Create Account
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
+              <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700" disabled={loading}>
+                {loading ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending OTP...</>
+                ) : (
+                  'Continue'
+                )}
+              </Button>
+
+              <p className="text-center text-xs text-muted-foreground">
+                We&apos;ll send a verification code to your email
+              </p>
+            </form>
+          )}
+
+          {/* Step: Login OTP */}
+          {step === 'login-otp' && (
+            <div className="space-y-4">
+              <button type="button" onClick={goBack} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <ArrowLeft className="h-3 w-3" /> Back
+              </button>
+
+              <div className="text-center space-y-2">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
+                  <ShieldCheck className="h-6 w-6 text-emerald-600" />
+                </div>
+                <h3 className="text-lg font-semibold">Verify Your Identity</h3>
+                <p className="text-sm text-muted-foreground">
+                  Enter the 6-digit code sent to <span className="font-medium text-foreground">{otpSentEmail}</span>
+                </p>
+              </div>
+
+              <div className="flex justify-center py-2">
+                <InputOTP maxLength={6} value={loginOtp} onChange={setLoginOtp} onComplete={handleLoginOtpComplete}>
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                  </InputOTPGroup>
+                  <InputOTPSeparator />
+                  <InputOTPGroup>
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+
+              {loading && (
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Verifying...
+                </div>
+              )}
+
+              <div className="text-center">
+                {otpCooldown > 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Resend code in <span className="font-medium text-emerald-600">{otpCooldown}s</span>
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => sendOtp(loginEmail, 'login')}
+                    className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+                  >
+                    Resend verification code
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Step: Signup Form */}
+          {step === 'signup-form' && (
+            <form onSubmit={handleSignupSubmit} className="space-y-4">
+              <button type="button" onClick={goBack} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <ArrowLeft className="h-3 w-3" /> Back
+              </button>
+
+              <div className="space-y-2">
+                <Label htmlFor="signup-name">Full Name</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="signup-name"
+                    type="text"
+                    placeholder="Your full name"
+                    value={signupName}
+                    onChange={(e) => setSignupName(e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="signup-email">Email Address</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="signup-email"
+                    type="email"
+                    placeholder="admin@store.com"
+                    value={signupEmail}
+                    onChange={(e) => setSignupEmail(e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="signup-password">Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="signup-password"
+                    type={showSignupPassword ? 'text' : 'password'}
+                    placeholder="Min 6 characters"
+                    value={signupPassword}
+                    onChange={(e) => setSignupPassword(e.target.value)}
+                    className="pl-10 pr-10"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSignupPassword(!showSignupPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showSignupPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="signup-confirm">Confirm Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="signup-confirm"
+                    type="password"
+                    placeholder="Confirm password"
+                    value={signupConfirmPassword}
+                    onChange={(e) => setSignupConfirmPassword(e.target.value)}
+                    className="pl-10"
+                    required
+                  />
+                </div>
+              </div>
+
+              <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700" disabled={loading}>
+                {loading ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending OTP...</>
+                ) : (
+                  'Create Account'
+                )}
+              </Button>
+
+              <p className="text-center text-xs text-muted-foreground">
+                We&apos;ll send a verification code to your email
+              </p>
+            </form>
+          )}
+
+          {/* Step: Signup OTP */}
+          {step === 'signup-otp' && (
+            <div className="space-y-4">
+              <button type="button" onClick={goBack} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <ArrowLeft className="h-3 w-3" /> Back
+              </button>
+
+              <div className="text-center space-y-2">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
+                  <ShieldCheck className="h-6 w-6 text-emerald-600" />
+                </div>
+                <h3 className="text-lg font-semibold">Verify Your Email</h3>
+                <p className="text-sm text-muted-foreground">
+                  Enter the 6-digit code sent to <span className="font-medium text-foreground">{otpSentEmail}</span>
+                </p>
+              </div>
+
+              <div className="flex justify-center py-2">
+                <InputOTP maxLength={6} value={signupOtp} onChange={setSignupOtp} onComplete={handleSignupOtpComplete}>
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                  </InputOTPGroup>
+                  <InputOTPSeparator />
+                  <InputOTPGroup>
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+
+              {loading && (
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Creating account...
+                </div>
+              )}
+
+              <div className="text-center">
+                {otpCooldown > 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Resend code in <span className="font-medium text-emerald-600">{otpCooldown}s</span>
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => sendOtp(signupEmail, 'signup')}
+                    className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+                  >
+                    Resend verification code
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -11,8 +11,9 @@ import {
   SidebarMenuButton,
   SidebarRail,
 } from '@/components/ui/sidebar'
-import { Store, LayoutDashboard, ShoppingCart, Package, Users, Settings, BadgeCheck, BadgeX } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Store, LayoutDashboard, ShoppingCart, Package, Users, Settings, Wifi, WifiOff, Clock, Activity } from 'lucide-react'
+import { useEffect, useState, useRef } from 'react'
+import { formatDistanceToNow } from 'date-fns'
 
 const navItems: { view: ActiveView; label: string; icon: React.ElementType; badge?: string }[] = [
   { view: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -25,13 +26,42 @@ const navItems: { view: ActiveView; label: string; icon: React.ElementType; badg
 export function AppSidebar() {
   const { activeView, setActiveView } = useAppStore()
   const [wcConnected, setWcConnected] = useState(false)
+  const [lastSync, setLastSync] = useState<string | null>(null)
+
+  const mountedRef = useRef(false)
 
   useEffect(() => {
-    fetch('/api/settings')
-      .then((r) => r.json())
-      .then((data) => setWcConnected(data.wcConnected || false))
-      .catch(() => {})
+    // Subscribe to settings updates
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch('/api/settings')
+        const data = await res.json()
+        if (mountedRef.current) {
+          setWcConnected(data.wcConnected === 'true' || data.wcConnected === true)
+          setLastSync(data.wc_last_sync || null)
+        }
+      } catch {
+        // Silently fail
+      }
+    }
+
+    mountedRef.current = true
+    fetchSettings()
+    const interval = setInterval(fetchSettings, 30000)
+    return () => {
+      mountedRef.current = false
+      clearInterval(interval)
+    }
   }, [])
+
+  function getLastSyncText() {
+    if (!lastSync) return null
+    try {
+      return formatDistanceToNow(new Date(lastSync), { addSuffix: true })
+    } catch {
+      return null
+    }
+  }
 
   return (
     <Sidebar collapsible="icon">
@@ -73,20 +103,34 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarContent>
 
-      <SidebarFooter className="border-t px-4 py-3">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="font-mono">v2.1.0</span>
+      <SidebarFooter className="border-t px-4 py-3 space-y-2">
+        {/* WC Connection Status */}
+        <div className="flex items-center gap-2 text-xs">
           {wcConnected ? (
-            <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-              <BadgeCheck className="size-3" />
-              <span className="group-data-[collapsible=icon]:hidden">Connected</span>
-            </span>
+            <>
+              <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                <Wifi className="size-3" />
+                <span className="group-data-[collapsible=icon]:hidden font-medium">Connected</span>
+              </div>
+              {lastSync && (
+                <span className="flex items-center gap-0.5 text-muted-foreground group-data-[collapsible=icon]:hidden">
+                  <Clock className="size-2.5" />
+                  {getLastSyncText()}
+                </span>
+              )}
+            </>
           ) : (
             <span className="flex items-center gap-1 text-amber-500">
-              <BadgeX className="size-3" />
+              <WifiOff className="size-3" />
               <span className="group-data-[collapsible=icon]:hidden">Not Connected</span>
             </span>
           )}
+        </div>
+
+        {/* Version */}
+        <div className="flex items-center text-xs text-muted-foreground">
+          <Activity className="mr-1.5 size-3" />
+          <span className="font-mono">v2.2.0</span>
         </div>
       </SidebarFooter>
 

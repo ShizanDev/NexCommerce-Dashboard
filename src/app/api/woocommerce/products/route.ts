@@ -21,7 +21,7 @@ export async function GET() {
     // Fetch all products with pagination
     let page = 1
     let totalPages = 1
-    const allProducts: any[] = []
+    const allProducts: Array<Record<string, unknown>> = []
 
     while (page <= totalPages) {
       const endpoint = `${cleanUrl}/wp-json/wc/v3/products?per_page=100&page=${page}`
@@ -37,7 +37,7 @@ export async function GET() {
         break
       }
 
-      const products = await response.json()
+      const products = (await response.json()) as Array<Record<string, unknown>>
       allProducts.push(...products)
 
       const totalPagesHeader = response.headers.get('X-WP-TotalPages')
@@ -48,35 +48,38 @@ export async function GET() {
       page++
     }
 
-    // Sync products to local DB
+    // Sync products to local DB using corrected field names
     for (const product of allProducts) {
       try {
+        const images = product.images as Array<{ src: string }> | null
+        const categories = product.categories as Array<{ name: string }> | null
+
         await db.product.upsert({
-          where: { wooProductId: product.id.toString() },
+          where: { wooId: product.id as number },
           update: {
-            name: product.name,
-            sku: product.sku || '',
-            price: parseFloat(product.price) || 0,
-            regularPrice: parseFloat(product.regular_price) || 0,
-            salePrice: parseFloat(product.sale_price) || 0,
-            stockStatus: product.stock_status || 'instock',
-            stockQuantity: product.stock_quantity || 0,
-            imageUrl: product.images?.[0]?.src || '',
-            category: product.categories?.[0]?.name || '',
-            status: product.status || 'publish',
+            name: (product.name as string) || '',
+            sku: (product.sku as string) || '',
+            price: parseFloat(String(product.price || '0')) || 0,
+            regularPrice: parseFloat(String(product.regular_price || '0')) || 0,
+            salePrice: parseFloat(String(product.sale_price || '0')) || 0,
+            stockStatus: (product.stock_status as string) || 'instock',
+            stockQty: (product.stock_quantity as number) || 0,
+            imageUrl: images?.[0]?.src || '',
+            category: categories?.[0]?.name || '',
+            status: (product.status as string) || 'publish',
           },
           create: {
-            wooProductId: product.id.toString(),
-            name: product.name,
-            sku: product.sku || '',
-            price: parseFloat(product.price) || 0,
-            regularPrice: parseFloat(product.regular_price) || 0,
-            salePrice: parseFloat(product.sale_price) || 0,
-            stockStatus: product.stock_status || 'instock',
-            stockQuantity: product.stock_quantity || 0,
-            imageUrl: product.images?.[0]?.src || '',
-            category: product.categories?.[0]?.name || '',
-            status: product.status || 'publish',
+            wooId: product.id as number,
+            name: (product.name as string) || '',
+            sku: (product.sku as string) || '',
+            price: parseFloat(String(product.price || '0')) || 0,
+            regularPrice: parseFloat(String(product.regular_price || '0')) || 0,
+            salePrice: parseFloat(String(product.sale_price || '0')) || 0,
+            stockStatus: (product.stock_status as string) || 'instock',
+            stockQty: (product.stock_quantity as number) || 0,
+            imageUrl: images?.[0]?.src || '',
+            category: categories?.[0]?.name || '',
+            status: (product.status as string) || 'publish',
           },
         })
       } catch {
@@ -84,9 +87,17 @@ export async function GET() {
       }
     }
 
+    // Update last sync time
+    await db.systemSettings.upsert({
+      where: { key: 'wc_last_sync' },
+      update: { value: new Date().toISOString() },
+      create: { key: 'wc_last_sync', value: new Date().toISOString() },
+    })
+
     return NextResponse.json({ products: allProducts, total: allProducts.length })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Products fetch error:', error)
-    return NextResponse.json({ error: `Failed to fetch products: ${error.message}` }, { status: 500 })
+    const msg = error instanceof Error ? error.message : 'Unknown error'
+    return NextResponse.json({ error: `Failed to fetch products: ${msg}` }, { status: 500 })
   }
 }

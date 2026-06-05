@@ -5,10 +5,34 @@ import { hashPassword } from '@/lib/auth'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, password, name, wc_store_url, wc_consumer_key, wc_consumer_secret } = body
+    const { email, password, name, otp } = body
 
     if (!email || !password || !name) {
       return NextResponse.json({ success: false, error: 'Email, password, and name are required' }, { status: 400 })
+    }
+
+    if (password.length < 6) {
+      return NextResponse.json({ success: false, error: 'Password must be at least 6 characters' }, { status: 400 })
+    }
+
+    // Verify OTP first
+    if (!otp) {
+      return NextResponse.json({ success: false, error: 'OTP verification is required' }, { status: 400 })
+    }
+
+    const otpRecord = await db.otpRecord.findFirst({
+      where: {
+        email,
+        purpose: 'signup',
+        otp,
+        verified: false,
+        expiresAt: { gte: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    if (!otpRecord) {
+      return NextResponse.json({ success: false, error: 'Invalid or expired OTP' }, { status: 401 })
     }
 
     // Check if user already exists
@@ -26,31 +50,15 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         name,
         role: 'admin',
+        emailVerified: true,
       },
     })
 
-    // Store WC credentials if provided
-    if (wc_store_url) {
-      await db.systemSettings.upsert({
-        where: { key: 'wc_store_url' },
-        update: { value: wc_store_url },
-        create: { key: 'wc_store_url', value: wc_store_url },
-      })
-    }
-    if (wc_consumer_key) {
-      await db.systemSettings.upsert({
-        where: { key: 'wc_consumer_key' },
-        update: { value: wc_consumer_key },
-        create: { key: 'wc_consumer_key', value: wc_consumer_key },
-      })
-    }
-    if (wc_consumer_secret) {
-      await db.systemSettings.upsert({
-        where: { key: 'wc_consumer_secret' },
-        update: { value: wc_consumer_secret },
-        create: { key: 'wc_consumer_secret', value: wc_consumer_secret },
-      })
-    }
+    // Mark OTP as verified
+    await db.otpRecord.update({
+      where: { id: otpRecord.id },
+      data: { verified: true },
+    })
 
     // Seed default currency settings
     await db.systemSettings.upsert({

@@ -8,23 +8,23 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1', 10)
     const limit = parseInt(searchParams.get('limit') || '20', 10)
 
-    const where: any = {}
+    const where: Record<string, unknown> = {}
 
     if (search) {
       where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
+        { name: { contains: search } },
+        { email: { contains: search } },
       ]
     }
 
     const [customers, total] = await Promise.all([
       db.customer.findMany({
-        where,
+        where: Object.keys(where).length > 0 ? where : undefined,
         skip: (page - 1) * limit,
         take: limit,
         orderBy: { name: 'asc' },
       }),
-      db.customer.count({ where }),
+      db.customer.count({ where: Object.keys(where).length > 0 ? where : undefined }),
     ])
 
     // Calculate total spent and order count per customer from orders
@@ -32,10 +32,10 @@ export async function GET(request: NextRequest) {
       customers.map(async (customer) => {
         const orders = await db.wooCommerceOrder.findMany({
           where: { customerEmail: customer.email },
-          select: { total: true, paymentStatus: true },
+          select: { totalAmount: true, paymentStatus: true },
         })
         const paidOrders = orders.filter((o) => o.paymentStatus === 'paid')
-        const totalSpent = paidOrders.reduce((sum, o) => sum + o.total, 0)
+        const totalSpent = paidOrders.reduce((sum, o) => sum + o.totalAmount, 0)
         const orderCount = orders.length
 
         return {

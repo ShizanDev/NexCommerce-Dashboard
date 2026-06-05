@@ -11,7 +11,7 @@ function mapPaymentStatus(status: string, datePaid: string | null): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const order = await request.json() as Record<string, unknown>
+    const order = (await request.json()) as Record<string, unknown>
 
     if (!order.id || !order.billing) {
       return NextResponse.json({ received: true, note: 'Not a valid WC order payload' })
@@ -105,6 +105,15 @@ export async function POST(request: NextRequest) {
         },
       })
     }
+
+    // Update last sync time
+    await db.systemSettings.upsert({
+      where: { key: 'wc_last_sync' },
+      update: { value: new Date().toISOString() },
+      create: { key: 'wc_last_sync', value: new Date().toISOString() },
+    })
+
+    console.log(`🔔 Webhook received: Order #${wooId} (${wcStatus}) from ${customerName}`)
 
     return NextResponse.json({ received: true, order_id: wooId })
   } catch (error) {

@@ -10,13 +10,26 @@ datasource db {
 // ============ AUTH USER ============
 
 model AuthUser {
+  id         String   @id @default(cuid())
+  email      String   @unique
+  password   String
+  name       String   @default("")
+  role       String   @default("admin")
+  emailVerified Boolean @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// ============ OTP VERIFICATION ============
+
+model OtpRecord {
   id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String   @default("")
-  role      String   @default("admin")
+  email     String
+  otp       String
+  purpose   String   // "signup" | "login"
+  verified  Boolean  @default(false)
+  expiresAt DateTime
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
 
 // ============ WOOCOMMERCE ORDERS ============
@@ -65,17 +78,20 @@ model Customer {
 // ============ PRODUCTS (synced from WC) ============
 
 model Product {
-  id          String   @id @default(cuid())
-  wooId       Int      @unique
-  name        String
-  sku         String   @default("")
-  price       Float
-  imageUrl    String   @default("")
-  description String   @default("")
-  status      String   @default("publish")
-  stockQty    Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  wooId        Int      @unique
+  name         String
+  sku          String   @default("")
+  price        Float    @default(0)
+  regularPrice Float    @default(0)
+  salePrice    Float    @default(0)
+  imageUrl     String   @default("")
+  category     String   @default("")
+  status       String   @default("publish")
+  stockStatus  String   @default("instock")
+  stockQty     Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 // ============ SYSTEM SETTINGS ============

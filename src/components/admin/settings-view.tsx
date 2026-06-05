@@ -16,6 +16,17 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import {
   Globe,
   Key,
   Eye,
@@ -31,18 +42,25 @@ import {
   Webhook,
   Info,
   RotateCcw,
+  RefreshCw,
+  Clock,
+  Unplug,
+  Shield,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { formatDistanceToNow } from 'date-fns'
 
 interface SettingsMap {
   [key: string]: string
 }
 
+type ConnectionStatus = 'idle' | 'connected' | 'failed' | 'disconnected'
+
 export default function SettingsView() {
   const [settings, setSettings] = useState<SettingsMap>({})
-  const [wcConnected, setWcConnected] = useState(false)
   const [loading, setLoading] = useState(true)
   const [testing, setTesting] = useState(false)
+  const [syncing, setSyncing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -63,17 +81,17 @@ export default function SettingsView() {
   const [notifyStatusChange, setNotifyStatusChange] = useState(false)
 
   // Connection status
-  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'connected' | 'failed'>('idle')
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle')
+  const [lastSync, setLastSync] = useState<string | null>(null)
 
   async function fetchSettings() {
     setLoading(true)
     try {
       const res = await fetch('/api/settings')
       const data = await res.json()
-      // API returns flat object: { wc_store_url, wc_consumer_key, ..., wcConnected }
       setSettings(data)
-      setWcConnected(data.wcConnected === 'true' || data.wcConnected === true)
 
+      const isConnected = data.wcConnected === 'true' || data.wcConnected === true
       setStoreUrl(data.wc_store_url || '')
       setConsumerKey(data.wc_consumer_key || '')
       setConsumerSecret(data.wc_consumer_secret || '')
@@ -82,8 +100,13 @@ export default function SettingsView() {
       setNotifyNewOrder(data.notify_new_order !== 'false')
       setNotifyLowStock(data.notify_low_stock !== 'false')
       setNotifyStatusChange(data.notify_status_change === 'true')
+      setLastSync(data.wc_last_sync || null)
 
-      if (data.wcConnected === 'true' || data.wcConnected === true) setConnectionStatus('connected')
+      if (isConnected) {
+        setConnectionStatus('connected')
+      } else if (data.wc_store_url) {
+        setConnectionStatus('disconnected')
+      }
     } catch {
       toast.error('Failed to load settings')
     } finally {
@@ -112,8 +135,9 @@ export default function SettingsView() {
       const data = await res.json()
       if (data.success) {
         setConnectionStatus('connected')
-        setWcConnected(true)
+        setLastSync(data.lastSync || new Date().toISOString())
         toast.success(`Connected! Synced ${data.count} orders.`)
+        fetchSettings()
       } else {
         setConnectionStatus('failed')
         toast.error(data.error || 'Connection failed')
@@ -123,6 +147,49 @@ export default function SettingsView() {
       toast.error('Connection failed')
     } finally {
       setTesting(false)
+    }
+  }
+
+  async function handleSync() {
+    setSyncing(true)
+    try {
+      const res = await fetch('/api/woocommerce/sync')
+      const data = await res.json()
+      if (data.success) {
+        toast.success(`Synced ${data.totalSynced} orders from WooCommerce`)
+        setLastSync(new Date().toISOString())
+        fetchSettings()
+      } else {
+        toast.error(data.error || 'Sync failed')
+      }
+    } catch {
+      toast.error('Sync failed')
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  async function handleDisconnect() {
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'disconnect' }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setConnectionStatus('disconnected')
+        setStoreUrl('')
+        setConsumerKey('')
+        setConsumerSecret('')
+        setLastSync(null)
+        toast.success('WooCommerce disconnected')
+        fetchSettings()
+      } else {
+        toast.error('Failed to disconnect')
+      }
+    } catch {
+      toast.error('Failed to disconnect')
     }
   }
 
@@ -198,13 +265,22 @@ export default function SettingsView() {
   }
 
   const webhookEvents = [
-    'order.created',
-    'order.updated',
-    'order.deleted',
-    'order.status_changed',
-    'customer.created',
-    'customer.updated',
+    { event: 'order.created', desc: 'New order placed' },
+    { event: 'order.updated', desc: 'Order details changed' },
+    { event: 'order.deleted', desc: 'Order deleted' },
+    { event: 'order.status_changed', desc: 'Order status updated' },
   ]
+
+  function getLastSyncText() {
+    if (!lastSync) return null
+    try {
+      return formatDistanceToNow(new Date(lastSync), { addSuffix: true })
+    } catch {
+      return null
+    }
+  }
+
+  const isConnected = connectionStatus === 'connected'
 
   return (
     <div className="space-y-6">
@@ -214,24 +290,84 @@ export default function SettingsView() {
       </div>
 
       {/* Connection Status Banner */}
-      {connectionStatus === 'connected' && (
-        <div className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-950/30">
-          <Wifi className="h-5 w-5 text-emerald-600" />
-          <div>
-            <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">Connected to WooCommerce</p>
-            <p className="text-xs text-emerald-600 dark:text-emerald-400">Your store is successfully connected and orders are being synced.</p>
+      <Card className={isConnected
+        ? 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-800 dark:bg-emerald-950/20'
+        : connectionStatus === 'failed'
+        ? 'border-red-200 bg-red-50/50 dark:border-red-800 dark:bg-red-950/20'
+        : 'border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20'
+      }>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`rounded-full p-2 ${isConnected ? 'bg-emerald-100 dark:bg-emerald-900/40' : connectionStatus === 'failed' ? 'bg-red-100 dark:bg-red-900/40' : 'bg-amber-100 dark:bg-amber-900/40'}`}>
+                {isConnected ? (
+                  <Wifi className="h-5 w-5 text-emerald-600" />
+                ) : connectionStatus === 'failed' ? (
+                  <WifiOff className="h-5 w-5 text-red-600" />
+                ) : (
+                  <WifiOff className="h-5 w-5 text-amber-600" />
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className={`text-sm font-semibold ${isConnected ? 'text-emerald-800 dark:text-emerald-300' : connectionStatus === 'failed' ? 'text-red-800 dark:text-red-300' : 'text-amber-800 dark:text-amber-300'}`}>
+                    {isConnected ? 'Connected to WooCommerce' : connectionStatus === 'failed' ? 'Connection Failed' : 'Not Connected'}
+                  </p>
+                  <Badge variant={isConnected ? 'default' : 'secondary'} className={isConnected ? 'bg-emerald-600' : ''}>
+                    {isConnected ? 'Active' : connectionStatus === 'failed' ? 'Error' : 'Inactive'}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-3 mt-0.5">
+                  {isConnected && storeUrl && (
+                    <p className="text-xs text-muted-foreground truncate max-w-xs">
+                      {storeUrl}
+                    </p>
+                  )}
+                  {lastSync && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      Last synced {getLastSyncText()}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {isConnected && (
+                <>
+                  <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing}>
+                    {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                    <span className="ml-1.5">Sync Now</span>
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30">
+                        <Unplug className="h-3.5 w-3.5" />
+                        <span className="ml-1.5">Disconnect</span>
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Disconnect WooCommerce?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will remove your WooCommerce API credentials and stop syncing orders. Your existing order data will be preserved.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDisconnect} className="bg-red-600 hover:bg-red-700">
+                          Disconnect
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      )}
-      {connectionStatus === 'failed' && (
-        <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950/30">
-          <WifiOff className="h-5 w-5 text-red-600" />
-          <div>
-            <p className="text-sm font-medium text-red-800 dark:text-red-300">Connection Failed</p>
-            <p className="text-xs text-red-600 dark:text-red-400">Check your credentials and try again.</p>
-          </div>
-        </div>
-      )}
+        </CardContent>
+      </Card>
 
       {/* Setup Guide */}
       <Card>
@@ -244,46 +380,22 @@ export default function SettingsView() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <div className="flex gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white text-sm font-bold">
-                1
+            {[
+              { step: 1, title: 'Generate Keys', desc: 'WooCommerce → Settings → API → Add Key' },
+              { step: 2, title: 'Enter Credentials', desc: 'Paste Store URL, Key, and Secret below' },
+              { step: 3, title: 'Test Connection', desc: 'Click "Test Connection" to verify' },
+              { step: 4, title: 'Setup Webhook', desc: 'Add webhook URL in WooCommerce settings' },
+            ].map((item) => (
+              <div key={item.step} className="flex gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white text-sm font-bold">
+                  {item.step}
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{item.title}</p>
+                  <p className="text-xs text-muted-foreground">{item.desc}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-medium">Generate Keys</p>
-                <p className="text-xs text-muted-foreground">
-                  WooCommerce → Settings → API → Keys → Add New
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white text-sm font-bold">
-                2
-              </div>
-              <div>
-                <p className="text-sm font-medium">Enter Credentials</p>
-                <p className="text-xs text-muted-foreground">Paste Store URL, Key, and Secret below</p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white text-sm font-bold">
-                3
-              </div>
-              <div>
-                <p className="text-sm font-medium">Test Connection</p>
-                <p className="text-xs text-muted-foreground">Click &quot;Test Connection&quot; to verify</p>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white text-sm font-bold">
-                4
-              </div>
-              <div>
-                <p className="text-sm font-medium">Setup Webhook</p>
-                <p className="text-xs text-muted-foreground">
-                  Add webhook URL in WooCommerce for live updates
-                </p>
-              </div>
-            </div>
+            ))}
           </div>
         </CardContent>
       </Card>
@@ -295,7 +407,7 @@ export default function SettingsView() {
             <Link2 className="h-5 w-5" />
             WooCommerce Connection
           </CardTitle>
-          <CardDescription>Enter your WooCommerce store credentials</CardDescription>
+          <CardDescription>Enter your WooCommerce store API credentials</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -356,21 +468,25 @@ export default function SettingsView() {
             </div>
           </div>
 
-          <Button
-            onClick={handleTestConnection}
-            disabled={testing || !storeUrl || !consumerKey || !consumerSecret}
-            className="bg-emerald-600 hover:bg-emerald-700"
-          >
-            {testing ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Testing...
-              </>
-            ) : (
-              <>
-                <Zap className="mr-2 h-4 w-4" /> Test Connection
-              </>
+          <div className="flex gap-3">
+            <Button
+              onClick={handleTestConnection}
+              disabled={testing || !storeUrl || !consumerKey || !consumerSecret}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              {testing ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Testing...</>
+              ) : (
+                <><Zap className="mr-2 h-4 w-4" /> Test Connection</>
+              )}
+            </Button>
+            {isConnected && (
+              <Button variant="outline" onClick={handleSync} disabled={syncing}>
+                {syncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                Re-sync Orders
+              </Button>
             )}
-          </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -381,11 +497,13 @@ export default function SettingsView() {
             <Webhook className="h-5 w-5" />
             Webhook Configuration
           </CardTitle>
-          <CardDescription>Configure WooCommerce to push order updates in real-time</CardDescription>
+          <CardDescription>
+            Configure WooCommerce to push real-time order updates
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Webhook URL</Label>
+            <Label>Webhook Delivery URL</Label>
             <div className="flex gap-2">
               <Input value={webhookUrl} readOnly className="font-mono text-sm bg-muted" />
               <Button variant="outline" size="icon" onClick={copyWebhookUrl}>
@@ -393,20 +511,42 @@ export default function SettingsView() {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Add this URL in WooCommerce → Settings → Webhooks → Add New
+              WooCommerce → Settings → Webhooks → Add New → Paste this URL in Delivery URL field
             </p>
           </div>
 
           <Separator />
 
           <div>
-            <Label className="text-sm">Recommended Events</Label>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {webhookEvents.map((event) => (
-                <Badge key={event} variant="outline" className="text-xs">
-                  {event}
-                </Badge>
+            <Label className="text-sm font-medium">Recommended Webhook Events</Label>
+            <p className="text-xs text-muted-foreground mb-3">
+              Create separate webhooks in WooCommerce for each event, all pointing to the same URL above
+            </p>
+            <div className="space-y-2">
+              {webhookEvents.map((item) => (
+                <div key={item.event} className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="flex items-center gap-3">
+                    <code className="text-xs font-mono bg-muted px-2 py-1 rounded">{item.event}</code>
+                    <span className="text-sm text-muted-foreground">{item.desc}</span>
+                  </div>
+                  <Badge variant="outline" className="text-xs shrink-0">Recommended</Badge>
+                </div>
               ))}
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/20">
+            <div className="flex gap-2">
+              <Shield className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+              <div className="text-xs text-blue-800 dark:text-blue-300">
+                <p className="font-medium">Webhook Security</p>
+                <p className="mt-0.5">
+                  WooCommerce webhooks use HMAC-SHA256 signatures. Set a Webhook Secret in WooCommerce settings for additional verification.
+                  Our endpoint validates all incoming webhook payloads.
+                </p>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -483,9 +623,7 @@ export default function SettingsView() {
       <div className="flex gap-3">
         <Button onClick={handleSave} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
           {saving ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
-            </>
+            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</>
           ) : (
             'Save Settings'
           )}

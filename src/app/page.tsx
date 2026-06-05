@@ -6,7 +6,15 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/s
 import { Toaster } from '@/components/ui/sonner'
 import { AppSidebar } from '@/components/admin/sidebar'
 import { Separator } from '@/components/ui/separator'
-import { ShoppingCart } from 'lucide-react'
+import { ShoppingCart, LogOut, User } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import DashboardView from '@/components/admin/dashboard-view'
 import OrdersView from '@/components/admin/orders-view'
 import ProductsView from '@/components/admin/products-view'
@@ -14,7 +22,7 @@ import CustomersView from '@/components/admin/customers-view'
 import SettingsView from '@/components/admin/settings-view'
 
 export default function Home() {
-  const { isLoggedIn, activeView, setLoggedIn } = useAppStore()
+  const { isLoggedIn, activeView, setLoggedIn, userName } = useAppStore()
   const [mounted, setMounted] = useState(false)
   const hydrated = useRef(false)
 
@@ -70,6 +78,15 @@ export default function Home() {
     settings: 'Settings',
   }
 
+  function handleSignOut() {
+    localStorage.removeItem('wc_dashboard_session')
+    setLoggedIn(false)
+  }
+
+  const initials = userName
+    ? userName.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+    : 'AD'
+
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -82,15 +99,29 @@ export default function Home() {
             <span>{viewLabels[activeView] || 'Dashboard'}</span>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <button
-              onClick={() => {
-                localStorage.removeItem('wc_dashboard_session')
-                setLoggedIn(false)
-              }}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Sign Out
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-2 rounded-full px-2 py-1.5 hover:bg-accent transition-colors outline-none">
+                  <Avatar className="h-7 w-7">
+                    <AvatarFallback className="bg-emerald-600 text-white text-xs font-semibold">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm font-medium hidden sm:inline">{userName || 'Admin'}</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem disabled>
+                  <User className="mr-2 h-4 w-4" />
+                  <span>{userName || 'Admin'}</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut} className="text-red-600 focus:text-red-600">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Sign Out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
         <main className="flex-1 overflow-auto p-4 md:p-6">
