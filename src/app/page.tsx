@@ -23,7 +23,7 @@ import SettingsView from '@/components/admin/settings-view'
 import SuperAdminView from '@/components/admin/super-admin-view'
 
 export default function Home() {
-  const { isLoggedIn, activeView, setLoggedIn, userName, userRole, setActiveView } = useAppStore()
+  const { isLoggedIn, activeView, setLoggedIn, resetAll, userName, userRole, userId, setActiveView } = useAppStore()
   const [mounted, setMounted] = useState(false)
   const hydrated = useRef(false)
 
@@ -62,13 +62,13 @@ export default function Home() {
 
   const renderView = () => {
     switch (activeView) {
-      case 'dashboard': return <DashboardView />
-      case 'orders': return <OrdersView />
-      case 'products': return <ProductsView />
-      case 'customers': return <CustomersView />
-      case 'settings': return <SettingsView />
-      case 'super-admin': return <SuperAdminView />
-      default: return <DashboardView />
+      case 'dashboard': return <DashboardView key={userId} />
+      case 'orders': return <OrdersView key={userId} />
+      case 'products': return <ProductsView key={userId} />
+      case 'customers': return <CustomersView key={userId} />
+      case 'settings': return <SettingsView key={userId} />
+      case 'super-admin': return <SuperAdminView key={userId} />
+      default: return <DashboardView key={userId} />
     }
   }
 
@@ -82,9 +82,9 @@ export default function Home() {
   }
 
   function handleSignOut() {
-    localStorage.removeItem('wc_dashboard_session')
-    setLoggedIn(false, '', '', '')
-    setActiveView('dashboard')
+    // Clear ALL localStorage to prevent data leaks
+    localStorage.clear()
+    resetAll()
   }
 
   const initials = userName

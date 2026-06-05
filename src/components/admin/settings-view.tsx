@@ -85,9 +85,6 @@ export default function SettingsView() {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle')
   const [lastSync, setLastSync] = useState<string | null>(null)
 
-  // Email status (read-only from backend)
-  const [emailConfigured, setEmailConfigured] = useState(false)
-
   async function fetchSettings() {
     setLoading(true)
     try {
@@ -99,9 +96,6 @@ export default function SettingsView() {
       setStoreUrl(data.wc_store_url || '')
       setConsumerKey(data.wc_consumer_key || '')
       setConsumerSecret(data.wc_consumer_secret || '')
-
-      // Email status (read-only, configured by owner)
-      setEmailConfigured(data.emailConfigured === 'true' || data.emailConfigured === true)
 
       setCurrency(data.currency || 'INR')
       setCurrencySymbol(data.currency_symbol || '₹')
@@ -362,36 +356,6 @@ export default function SettingsView() {
                 </>
               )}
             </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Email Status (read-only) */}
-      <Card className={emailConfigured
-        ? 'border-emerald-200 dark:border-emerald-800'
-        : 'border-amber-200 dark:border-amber-800'
-      }>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Shield className={`h-5 w-5 ${emailConfigured ? 'text-emerald-600' : 'text-amber-600'}`} />
-            Email Service
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-2 flex-wrap">
-            {emailConfigured ? (
-              <>
-                <Badge className="bg-emerald-600">✓ Email Active</Badge>
-                <span className="text-xs text-muted-foreground">OTP verification emails are being sent automatically</span>
-              </>
-            ) : (
-              <>
-                <Badge variant="outline" className="text-amber-600 border-amber-300">
-                  Sandbox Mode
-                </Badge>
-                <span className="text-xs text-muted-foreground">Email not configured — OTP codes will be shown on-screen during login/signup</span>
-              </>
-            )}
           </div>
         </CardContent>
       </Card>

@@ -435,7 +435,7 @@ export function LoginPage() {
                         <p className="text-xs text-amber-600 dark:text-amber-500 mt-0.5">{emailErrorDetail}</p>
                       )}
                       <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
-                        Configure email in <strong>Settings</strong> to receive real OTP emails.
+                        Contact the system administrator to enable email delivery.
                       </p>
                     </div>
                   </div>
@@ -605,7 +605,7 @@ export function LoginPage() {
                         <p className="text-xs text-amber-600 dark:text-amber-500 mt-0.5">{emailErrorDetail}</p>
                       )}
                       <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
-                        Configure email in <strong>Settings</strong> to receive real OTP emails.
+                        Contact the system administrator to enable email delivery.
                       </p>
                     </div>
                   </div>

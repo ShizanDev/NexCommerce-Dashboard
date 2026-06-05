@@ -13,6 +13,7 @@ interface AppState {
   toggleSidebar: () => void
   setSidebarOpen: (open: boolean) => void
   setLoggedIn: (loggedIn: boolean, name?: string, userId?: string, role?: string) => void
+  resetAll: () => void
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -30,5 +31,13 @@ export const useAppStore = create<AppState>((set) => ({
     userName: name || '',
     userId: userId || '',
     userRole: role || '',
+  }),
+  resetAll: () => set({
+    activeView: 'dashboard',
+    sidebarOpen: true,
+    isLoggedIn: false,
+    userName: '',
+    userId: '',
+    userRole: '',
   }),
 }))

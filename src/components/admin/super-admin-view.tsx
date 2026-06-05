@@ -64,10 +64,16 @@ interface UserRecord {
 
 interface AdminStatsData {
   totalUsers: number
-  newSignupsToday: number
-  activeUsers7d: number
+  todaySignups: number
+  weekSignups: number
+  monthSignups: number
+  activeUsers: number
   wcConnectedCount: number
+  superAdminCount: number
+  regularAdminCount: number
   totalOrders: number
+  totalCustomers: number
+  totalProducts: number
   totalRevenue: number
   dailySignups: DailySignup[]
   users: UserRecord[]
@@ -219,10 +225,11 @@ export default function SuperAdminView() {
         <p className="text-muted-foreground mt-1">System overview and user management</p>
       </div>
 
-      {/* ── 1. Overview Stats (6 cards) ──────────────────────────────── */}
+      {/* ── 1. Overview Stats (7 cards) ──────────────────────────────── */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {loading ? (
           <>
+            <StatCardSkeleton />
             <StatCardSkeleton />
             <StatCardSkeleton />
             <StatCardSkeleton />
@@ -240,13 +247,13 @@ export default function SuperAdminView() {
             />
             <StatCard
               title="New Signups Today"
-              value={data.newSignupsToday}
+              value={data.todaySignups}
               icon={UserPlus}
               color="bg-blue-600"
             />
             <StatCard
               title="Active Users (7 days)"
-              value={data.activeUsers7d}
+              value={data.activeUsers}
               icon={Activity}
               color="bg-amber-600"
             />
@@ -261,6 +268,12 @@ export default function SuperAdminView() {
               value={data.totalOrders}
               icon={ShoppingCart}
               color="bg-teal-600"
+            />
+            <StatCard
+              title="Total Customers"
+              value={data.totalCustomers}
+              icon={Users}
+              color="bg-indigo-600"
             />
             <StatCard
               title="Total Revenue"
@@ -307,13 +320,7 @@ export default function SuperAdminView() {
                 <ChartTooltip
                   content={
                     <ChartTooltipContent
-                      labelFormatter={(label) => {
-                        try {
-                          return format(new Date(label as string), 'MMMM dd, yyyy')
-                        } catch {
-                          return String(label)
-                        }
-                      }}
+                      labelFormatter={(label) => String(label)}
                       formatter={(value) => [`${value} signups`, 'New Users']}
                     />
                   }

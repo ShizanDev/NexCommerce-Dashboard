@@ -111,7 +111,7 @@ function StatCardSkeleton() {
 }
 
 export default function DashboardView() {
-  const { setActiveView } = useAppStore()
+  const { setActiveView, userId } = useAppStore()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -142,9 +142,16 @@ export default function DashboardView() {
     }
   }
 
+  // Reset all state when user changes
   useEffect(() => {
-    fetchDashboard()
-  }, [])
+    setData(null)
+    setLoading(true)
+    setError(null)
+  }, [userId])
+
+  useEffect(() => {
+    if (userId) fetchDashboard()
+  }, [userId])
 
   if (error && !data) {
     return (
