@@ -16,13 +16,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'OTP verification is required' }, { status: 400 })
     }
 
-    // Validate OTP
+    // Validate OTP (already verified by /api/auth/otp)
     const otpRecord = await db.otpRecord.findFirst({
       where: {
         email,
         purpose: 'login',
         otp,
-        verified: false,
+        verified: true,
         expiresAt: { gte: new Date() },
       },
       orderBy: { createdAt: 'desc' },
@@ -32,11 +32,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Invalid or expired OTP' }, { status: 401 })
     }
 
-    // Mark OTP as verified
-    await db.otpRecord.update({
-      where: { id: otpRecord.id },
-      data: { verified: true },
-    })
+    // OTP already verified by /api/auth/otp — no need to mark again
 
     const user = await db.authUser.findUnique({ where: { email } })
 

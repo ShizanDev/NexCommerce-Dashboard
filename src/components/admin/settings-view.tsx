@@ -46,6 +46,11 @@ import {
   Clock,
   Unplug,
   Shield,
+  Mail,
+  MailCheck,
+  MailX,
+  Send,
+  ExternalLink,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
@@ -64,12 +69,20 @@ export default function SettingsView() {
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  // Form fields
+  // Form fields - WC Connection
   const [storeUrl, setStoreUrl] = useState('')
   const [consumerKey, setConsumerKey] = useState('')
   const [consumerSecret, setConsumerSecret] = useState('')
   const [showKey, setShowKey] = useState(false)
   const [showSecret, setShowSecret] = useState(false)
+
+  // Form fields - Email Config
+  const [resendApiKey, setResendApiKey] = useState('')
+  const [emailFrom, setEmailFrom] = useState('')
+  const [testEmailTo, setTestEmailTo] = useState('')
+  const [showEmailKey, setShowEmailKey] = useState(false)
+  const [testingEmail, setTestingEmail] = useState(false)
+  const [emailConfigured, setEmailConfigured] = useState(false)
 
   // General settings
   const [currency, setCurrency] = useState('INR')
@@ -95,6 +108,9 @@ export default function SettingsView() {
       setStoreUrl(data.wc_store_url || '')
       setConsumerKey(data.wc_consumer_key || '')
       setConsumerSecret(data.wc_consumer_secret || '')
+      setResendApiKey(data.resend_api_key || '')
+      setEmailFrom(data.email_from || 'onboarding@resend.dev')
+      setEmailConfigured(data.emailConfigured === 'true' || data.emailConfigured === true)
       setCurrency(data.currency || 'INR')
       setCurrencySymbol(data.currency_symbol || '₹')
       setNotifyNewOrder(data.notify_new_order !== 'false')
@@ -193,6 +209,34 @@ export default function SettingsView() {
     }
   }
 
+  async function handleTestEmail() {
+    setTestingEmail(true)
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'test_email',
+          resend_api_key: resendApiKey,
+          email_from: emailFrom,
+          test_email_to: testEmailTo,
+        }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setEmailConfigured(true)
+        toast.success(`Test email sent to ${testEmailTo}! Check your inbox.`, { duration: 5000 })
+        fetchSettings()
+      } else {
+        toast.error(data.error || 'Failed to send test email')
+      }
+    } catch {
+      toast.error('Failed to test email')
+    } finally {
+      setTestingEmail(false)
+    }
+  }
+
   async function handleSave() {
     setSaving(true)
     try {
@@ -203,6 +247,9 @@ export default function SettingsView() {
         notify_new_order: String(notifyNewOrder),
         notify_low_stock: String(notifyLowStock),
         notify_status_change: String(notifyStatusChange),
+        // Also save email config
+        resend_api_key: resendApiKey,
+        email_from: emailFrom || 'onboarding@resend.dev',
       }
 
       const res = await fetch('/api/settings', {
@@ -212,6 +259,7 @@ export default function SettingsView() {
       })
 
       if (res.ok) {
+        setEmailConfigured(!!resendApiKey)
         setSettings(newSettings)
         toast.success('Settings saved successfully')
       } else {
@@ -286,7 +334,7 @@ export default function SettingsView() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground mt-1">Configure your WooCommerce connection and preferences</p>
+        <p className="text-muted-foreground mt-1">Configure your WooCommerce connection, email, and preferences</p>
       </div>
 
       {/* Connection Status Banner */}
@@ -297,7 +345,7 @@ export default function SettingsView() {
         : 'border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20'
       }>
         <CardContent className="p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <div className={`rounded-full p-2 ${isConnected ? 'bg-emerald-100 dark:bg-emerald-900/40' : connectionStatus === 'failed' ? 'bg-red-100 dark:bg-red-900/40' : 'bg-amber-100 dark:bg-amber-900/40'}`}>
                 {isConnected ? (
@@ -369,12 +417,145 @@ export default function SettingsView() {
         </CardContent>
       </Card>
 
+      {/* Email Configuration — NEW */}
+      <Card className={emailConfigured
+        ? 'border-emerald-200 dark:border-emerald-800'
+        : 'border-amber-200 dark:border-amber-800'
+      }>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            {emailConfigured ? (
+              <MailCheck className="h-5 w-5 text-emerald-600" />
+            ) : (
+              <Mail className="h-5 w-5 text-amber-600" />
+            )}
+            Email Configuration
+          </CardTitle>
+          <CardDescription>
+            Configure email service for OTP verification (uses Resend)
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Status indicator */}
+          <div className="flex items-center gap-2">
+            {emailConfigured ? (
+              <Badge className="bg-emerald-600">Email Configured</Badge>
+            ) : (
+              <Badge variant="outline" className="text-amber-600 border-amber-300">
+                <MailX className="h-3 w-3 mr-1" /> Not Configured
+              </Badge>
+            )}
+            {!emailConfigured && (
+              <span className="text-xs text-muted-foreground">OTP codes will be shown on-screen in sandbox mode</span>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="resend-api-key">
+              Resend API Key
+              <a
+                href="https://resend.com/api-keys"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-2 inline-flex items-center text-xs text-emerald-600 hover:text-emerald-700"
+              >
+                Get free API key <ExternalLink className="h-3 w-3 ml-0.5" />
+              </a>
+            </Label>
+            <div className="relative">
+              <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="resend-api-key"
+                type={showEmailKey ? 'text' : 'password'}
+                placeholder="re_xxxxxxxxxxxxx"
+                value={resendApiKey}
+                onChange={(e) => setResendApiKey(e.target.value)}
+                className="pl-10 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowEmailKey(!showEmailKey)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showEmailKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="email-from">From Email Address</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="email-from"
+                type="email"
+                placeholder="onboarding@resend.dev"
+                value={emailFrom}
+                onChange={(e) => setEmailFrom(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Default: <code className="bg-muted px-1 rounded">onboarding@resend.dev</code> (works without domain verification). Use a custom domain after verifying it in Resend.
+            </p>
+          </div>
+
+          <Separator />
+
+          {/* Test Email */}
+          <div className="space-y-2">
+            <Label htmlFor="test-email">Send Test Email</Label>
+            <div className="flex gap-2">
+              <Input
+                id="test-email"
+                type="email"
+                placeholder="your-email@gmail.com"
+                value={testEmailTo}
+                onChange={(e) => setTestEmailTo(e.target.value)}
+                className="flex-1"
+              />
+              <Button
+                variant="outline"
+                onClick={handleTestEmail}
+                disabled={testingEmail || !resendApiKey || !testEmailTo}
+              >
+                {testingEmail ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" /> Sending...</>
+                ) : (
+                  <><Send className="h-4 w-4 mr-1" /> Test</>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* Setup instructions */}
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/20">
+            <div className="flex gap-2">
+              <Info className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+              <div className="text-xs text-blue-800 dark:text-blue-300 space-y-1">
+                <p className="font-medium">How to set up email:</p>
+                <ol className="list-decimal list-inside space-y-0.5">
+                  <li>Create a free account at <a href="https://resend.com/signup" target="_blank" rel="noopener noreferrer" className="underline font-medium">resend.com</a></li>
+                  <li>Go to API Keys and create a new key</li>
+                  <li>Paste the API key above</li>
+                  <li>Click &quot;Test&quot; to verify email delivery works</li>
+                  <li>Save settings — OTP emails will now be sent to users</li>
+                </ol>
+                <p className="mt-1">
+                  Free tier: <strong>100 emails/day</strong> — perfect for OTP verification
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Setup Guide */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Info className="h-5 w-5 text-emerald-600" />
-            Setup Guide
+            WooCommerce Setup Guide
           </CardTitle>
           <CardDescription>Follow these steps to connect your WooCommerce store</CardDescription>
         </CardHeader>
@@ -468,7 +649,7 @@ export default function SettingsView() {
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <Button
               onClick={handleTestConnection}
               disabled={testing || !storeUrl || !consumerKey || !consumerSecret}
@@ -620,7 +801,7 @@ export default function SettingsView() {
       </Card>
 
       {/* Save / Reset */}
-      <div className="flex gap-3">
+      <div className="flex gap-3 pb-4">
         <Button onClick={handleSave} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700">
           {saving ? (
             <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</>

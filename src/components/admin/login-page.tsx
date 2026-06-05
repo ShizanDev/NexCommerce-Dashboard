@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Store, Mail, Lock, User, Eye, EyeOff, Loader2, ArrowLeft, ShieldCheck } from 'lucide-react'
+import { Store, Mail, Lock, User, Eye, EyeOff, Loader2, ArrowLeft, ShieldCheck, Info } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -64,6 +64,9 @@ export function LoginPage() {
     toast.success(`Welcome back, ${user.name}!`)
   }
 
+  const [isSandboxMode, setIsSandboxMode] = useState(false)
+  const [sandboxOtp, setSandboxOtp] = useState('')
+
   async function sendOtp(email: string, purpose: 'signup' | 'login') {
     setLoading(true)
     try {
@@ -76,14 +79,23 @@ export function LoginPage() {
       if (data.success) {
         setOtpSentEmail(email)
         setOtpCooldown(60)
-        // In production, OTP is sent via email. In sandbox mode, show it to the user.
-        if (data.otp) {
-          toast.success(`OTP sent to ${email}`, {
-            description: `Your verification code is: ${data.otp}`,
-            duration: 30000,
+
+        if (data.sandboxMode && data.otp) {
+          // Email not configured — show OTP on screen (sandbox/dev mode)
+          setIsSandboxMode(true)
+          setSandboxOtp(data.otp)
+          toast.success(`OTP generated (sandbox mode)`, {
+            description: `Email service not configured. Code: ${data.otp}`,
+            duration: 60000,
           })
         } else {
-          toast.success(`OTP sent to ${email}`)
+          // Email was actually sent
+          setIsSandboxMode(false)
+          setSandboxOtp('')
+          toast.success(`OTP sent to ${email}`, {
+            description: 'Check your inbox. The code expires in 5 minutes.',
+            duration: 8000,
+          })
         }
         return true
       } else {
@@ -332,6 +344,23 @@ export function LoginPage() {
                 </InputOTP>
               </div>
 
+              {isSandboxMode && sandboxOtp && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/20">
+                  <div className="flex gap-2 items-start">
+                    <Info className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs font-medium text-amber-800 dark:text-amber-300">Sandbox Mode</p>
+                      <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                        Email not configured. Your code: <span className="font-mono font-bold text-amber-900 dark:text-amber-200">{sandboxOtp}</span>
+                      </p>
+                      <p className="text-xs text-amber-600 dark:text-amber-500 mt-0.5">
+                        Configure email in Settings to receive real OTP emails.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {loading && (
                 <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" /> Verifying...
@@ -480,6 +509,23 @@ export function LoginPage() {
                   </InputOTPGroup>
                 </InputOTP>
               </div>
+
+              {isSandboxMode && sandboxOtp && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/20">
+                  <div className="flex gap-2 items-start">
+                    <Info className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-xs font-medium text-amber-800 dark:text-amber-300">Sandbox Mode</p>
+                      <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                        Email not configured. Your code: <span className="font-mono font-bold text-amber-900 dark:text-amber-200">{sandboxOtp}</span>
+                      </p>
+                      <p className="text-xs text-amber-600 dark:text-amber-500 mt-0.5">
+                        Configure email in Settings to receive real OTP emails.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {loading && (
                 <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">

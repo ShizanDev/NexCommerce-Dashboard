@@ -20,12 +20,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'OTP verification is required' }, { status: 400 })
     }
 
+    // Look for a verified OTP (already verified by /api/auth/otp) or a valid unverified OTP
     const otpRecord = await db.otpRecord.findFirst({
       where: {
         email,
         purpose: 'signup',
         otp,
-        verified: false,
+        verified: true,
         expiresAt: { gte: new Date() },
       },
       orderBy: { createdAt: 'desc' },
@@ -54,11 +55,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Mark OTP as verified
-    await db.otpRecord.update({
-      where: { id: otpRecord.id },
-      data: { verified: true },
-    })
+    // OTP already verified by /api/auth/otp — no need to mark again
 
     // Seed default currency settings
     await db.systemSettings.upsert({

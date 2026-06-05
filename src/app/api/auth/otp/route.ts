@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { sendOtpEmail } from '@/lib/email'
 
-// POST /api/auth/otp — Send OTP
+// POST /api/auth/otp — Send or Verify OTP
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -86,16 +87,27 @@ async function handleSendOtp(email: string, purpose: string) {
     },
   })
 
-  console.log(`📧 OTP for ${email} (${purpose}): ${otp}`)
+  console.log(`🔑 OTP generated for ${email} (${purpose}): ${otp}`)
 
-  // In production, send email via Resend/SendGrid/SMTP here.
-  // For this sandbox, we return the OTP in the response so the UI can show it.
-  return NextResponse.json({
-    success: true,
-    message: 'OTP sent successfully',
-    // In production, remove this field and send via email service
-    otp,
-  })
+  // Send real email via Resend
+  const emailResult = await sendOtpEmail(email, otp, purpose)
+
+  if (emailResult.sent) {
+    // Email was sent successfully — do NOT return OTP in response
+    return NextResponse.json({
+      success: true,
+      message: 'OTP sent to your email',
+    })
+  } else {
+    // Email failed to send — return OTP in response as fallback (sandbox mode)
+    console.warn(`⚠️ Email not sent to ${email}: ${emailResult.error}`)
+    return NextResponse.json({
+      success: true,
+      message: 'OTP generated (email service not configured — using sandbox mode)',
+      otp, // Included only when email service is unavailable
+      sandboxMode: true,
+    })
+  }
 }
 
 async function handleVerifyOtp(email: string, otp: string, purpose: string) {
@@ -132,13 +144,8 @@ async function handleVerifyOtp(email: string, otp: string, purpose: string) {
     data: { verified: true },
   })
 
-  // If signup purpose, mark user email as verified
-  if (purpose === 'signup') {
-    await db.authUser.update({
-      where: { email },
-      data: { emailVerified: true },
-    })
-  }
+  // Note: For signup, the user is created in /api/auth/setup with emailVerified=true
+  // We don't update authUser here because the user doesn't exist yet during signup OTP verification.
 
   return NextResponse.json({
     success: true,

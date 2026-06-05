@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { testEmailConnection } from '@/lib/email'
 
 // GET: Return all system settings
 export async function GET() {
@@ -12,8 +13,14 @@ export async function GET() {
 
     const wcConnected = !!(settingsMap.wc_store_url && settingsMap.wc_consumer_key && settingsMap.wc_consumer_secret)
     const lastSync = settingsMap.wc_last_sync || null
+    const emailConfigured = !!(settingsMap.resend_api_key)
 
-    return NextResponse.json({ ...settingsMap, wcConnected: String(wcConnected), wc_last_sync: lastSync })
+    return NextResponse.json({
+      ...settingsMap,
+      wcConnected: String(wcConnected),
+      wc_last_sync: lastSync,
+      emailConfigured: String(emailConfigured),
+    })
   } catch (error) {
     console.error('Settings GET error:', error)
     return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 })
@@ -45,7 +52,7 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// POST with actions: test_connection, disconnect
+// POST with actions: test_connection, disconnect, test_email, save_email
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -53,6 +60,10 @@ export async function POST(request: NextRequest) {
 
     if (action === 'disconnect') {
       return handleDisconnect()
+    }
+
+    if (action === 'test_email') {
+      return handleTestEmail(body)
     }
 
     if (action !== 'test_connection') {
@@ -237,8 +248,42 @@ export async function POST(request: NextRequest) {
   }
 }
 
+async function handleTestEmail(body: Record<string, string>) {
+  const { resend_api_key, email_from, test_email_to } = body
+
+  if (!resend_api_key) {
+    return NextResponse.json({ success: false, error: 'Resend API key is required' }, { status: 400 })
+  }
+
+  const fromEmail = email_from || 'onboarding@resend.dev'
+  const toEmail = test_email_to
+
+  if (!toEmail) {
+    return NextResponse.json({ success: false, error: 'Test recipient email is required' }, { status: 400 })
+  }
+
+  const result = await testEmailConnection(resend_api_key, fromEmail, toEmail)
+
+  if (result.success) {
+    // Save the email settings
+    await db.systemSettings.upsert({
+      where: { key: 'resend_api_key' },
+      update: { value: resend_api_key },
+      create: { key: 'resend_api_key', value: resend_api_key },
+    })
+    await db.systemSettings.upsert({
+      where: { key: 'email_from' },
+      update: { value: fromEmail },
+      create: { key: 'email_from', value: fromEmail },
+    })
+
+    return NextResponse.json({ success: true, message: 'Test email sent successfully!' })
+  } else {
+    return NextResponse.json({ success: false, error: result.error || 'Failed to send test email' })
+  }
+}
+
 async function handleDisconnect() {
-  // Delete WC credentials but keep other settings
   const keysToDelete = ['wc_store_url', 'wc_consumer_key', 'wc_consumer_secret', 'wc_last_sync', 'wc_webhook_secret']
   for (const key of keysToDelete) {
     try {
