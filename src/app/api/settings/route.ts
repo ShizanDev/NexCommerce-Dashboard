@@ -13,13 +13,19 @@ export async function GET() {
 
     const wcConnected = !!(settingsMap.wc_store_url && settingsMap.wc_consumer_key && settingsMap.wc_consumer_secret)
     const lastSync = settingsMap.wc_last_sync || null
-    const emailConfigured = !!(settingsMap.resend_api_key && settingsMap.resend_api_key.startsWith('re_'))
+
+    // Check email configuration (Gmail takes priority, then Resend)
+    const hasGmail = !!(settingsMap.gmail_email && settingsMap.gmail_app_password)
+    const hasResend = !!(settingsMap.resend_api_key && settingsMap.resend_api_key.startsWith('re_'))
+    const emailConfigured = hasGmail || hasResend
+    const emailProvider = hasGmail ? 'gmail' : hasResend ? 'resend' : 'none'
 
     return NextResponse.json({
       ...settingsMap,
       wcConnected: String(wcConnected),
       wc_last_sync: lastSync,
       emailConfigured: String(emailConfigured),
+      emailProvider,
     })
   } catch (error) {
     console.error('Settings GET error:', error)
@@ -44,7 +50,7 @@ export async function PUT(request: NextRequest) {
         update: { value },
         create: { key, value },
       })
-      if (key === 'resend_api_key' || key === 'email_from') {
+      if (key === 'resend_api_key' || key === 'email_from' || key === 'gmail_email' || key === 'gmail_app_password') {
         emailKeyChanged = true
       }
     }
@@ -62,7 +68,7 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// POST with actions: test_connection, disconnect, test_email, save_email
+// POST with actions: test_connection, disconnect, test_email
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -258,44 +264,98 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// ─── Test Email Handler (supports Gmail SMTP + Resend) ───────────
+
 async function handleTestEmail(body: Record<string, string>) {
-  const { resend_api_key, email_from, test_email_to } = body
+  const {
+    email_provider,
+    gmail_email,
+    gmail_app_password,
+    resend_api_key,
+    email_from,
+    test_email_to,
+  } = body
 
-  if (!resend_api_key) {
-    return NextResponse.json({ success: false, error: 'Resend API key is required' }, { status: 400 })
+  if (!test_email_to) {
+    return NextResponse.json({ success: false, error: 'Recipient email is required' }, { status: 400 })
   }
 
-  const fromEmail = email_from || 'onboarding@resend.dev'
-  const toEmail = test_email_to
+  const provider = email_provider as 'gmail' | 'resend' || 'gmail'
 
-  if (!toEmail) {
-    return NextResponse.json({ success: false, error: 'Test recipient email is required' }, { status: 400 })
-  }
+  // Test via Gmail SMTP
+  if (provider === 'gmail') {
+    if (!gmail_email || !gmail_app_password) {
+      return NextResponse.json({ success: false, error: 'Gmail email and App Password are required' }, { status: 400 })
+    }
 
-  const result = await testEmailConnection(resend_api_key, fromEmail, toEmail)
-
-  if (result.success) {
-    // Save the email settings
-    await db.systemSettings.upsert({
-      where: { key: 'resend_api_key' },
-      update: { value: resend_api_key },
-      create: { key: 'resend_api_key', value: resend_api_key },
+    const result = await testEmailConnection('gmail', {
+      email: gmail_email,
+      password: gmail_app_password,
+      toEmail: test_email_to,
     })
-    await db.systemSettings.upsert({
-      where: { key: 'email_from' },
-      update: { value: fromEmail },
-      create: { key: 'email_from', value: fromEmail },
+
+    if (result.success) {
+      // Save Gmail config
+      await db.systemSettings.upsert({ where: { key: 'gmail_email' }, update: { value: gmail_email }, create: { key: 'gmail_email', value: gmail_email } })
+      await db.systemSettings.upsert({ where: { key: 'gmail_app_password' }, update: { value: gmail_app_password }, create: { key: 'gmail_app_password', value: gmail_app_password } })
+
+      // Clear any old Resend config to avoid confusion
+      try { await db.systemSettings.delete({ where: { key: 'resend_api_key' } }) } catch { /* ignore */ }
+      try { await db.systemSettings.delete({ where: { key: 'email_from' } }) } catch { /* ignore */ }
+
+      resetEmailClient()
+      console.log('📧 Gmail SMTP config saved and client reset')
+
+      return NextResponse.json({
+        success: true,
+        message: `Test email sent successfully via Gmail! OTP emails will now be sent from ${gmail_email}`,
+        provider: 'gmail',
+      })
+    } else {
+      return NextResponse.json({ success: false, error: result.error || 'Failed to send test email via Gmail' })
+    }
+  }
+
+  // Test via Resend
+  if (provider === 'resend') {
+    if (!resend_api_key) {
+      return NextResponse.json({ success: false, error: 'Resend API key is required' }, { status: 400 })
+    }
+
+    const fromEmail = email_from || 'onboarding@resend.dev'
+
+    const result = await testEmailConnection('resend', {
+      apiKey: resend_api_key,
+      fromEmail,
+      toEmail: test_email_to,
     })
 
-    // Reset the email client so new credentials take effect immediately
-    resetEmailClient()
-    console.log('📧 Email settings saved and client reset')
+    if (result.success) {
+      // Save Resend config
+      await db.systemSettings.upsert({ where: { key: 'resend_api_key' }, update: { value: resend_api_key }, create: { key: 'resend_api_key', value: resend_api_key } })
+      await db.systemSettings.upsert({ where: { key: 'email_from' }, update: { value: fromEmail }, create: { key: 'email_from', value: fromEmail } })
 
-    return NextResponse.json({ success: true, message: 'Test email sent successfully! Email service is now active.' })
-  } else {
-    return NextResponse.json({ success: false, error: result.error || 'Failed to send test email' })
+      // Clear any old Gmail config to avoid confusion
+      try { await db.systemSettings.delete({ where: { key: 'gmail_email' } }) } catch { /* ignore */ }
+      try { await db.systemSettings.delete({ where: { key: 'gmail_app_password' } }) } catch { /* ignore */ }
+
+      resetEmailClient()
+      console.log('📧 Resend config saved and client reset')
+
+      return NextResponse.json({
+        success: true,
+        message: 'Test email sent successfully via Resend! Email service is now active.',
+        provider: 'resend',
+      })
+    } else {
+      return NextResponse.json({ success: false, error: result.error || 'Failed to send test email via Resend' })
+    }
   }
+
+  return NextResponse.json({ success: false, error: 'Invalid email provider. Use "gmail" or "resend".' }, { status: 400 })
 }
+
+// ─── Disconnect ────────────────────────────────────────────────────
 
 async function handleDisconnect() {
   const keysToDelete = ['wc_store_url', 'wc_consumer_key', 'wc_consumer_secret', 'wc_last_sync', 'wc_webhook_secret']

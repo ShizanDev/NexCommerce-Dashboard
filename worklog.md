@@ -35,64 +35,30 @@ Task: Debug and fix OTP email delivery — implement real email sending via Rese
 Work Log:
 - Diagnosed root cause: OTP was never sent as real email, only logged to console and returned in API response
 - Installed `resend` package (v6.12.4) for email delivery
-- Created `src/lib/email.ts` — Email service module using Resend with:
-  - `sendOtpEmail()`: Sends professional HTML OTP email (gradient header, large OTP display, 5-min expiry notice)
-  - `testEmailConnection()`: Sends test email to verify configuration
-  - Reads API key from SystemSettings or process.env
-  - Falls back gracefully when no API key configured
-- Updated `src/app/api/auth/otp/route.ts`:
-  - Now calls `sendOtpEmail()` to actually send real emails
-  - When email sent successfully: OTP NOT returned in response (secure)
-  - When email fails (no API key): Returns OTP in response with `sandboxMode: true` flag
-- Updated `src/app/api/settings/route.ts`:
-  - Added `action=test_email` POST handler: Validates API key, sends test email, saves config
-  - Added `emailConfigured` flag to GET response
-- Redesigned `src/components/admin/settings-view.tsx`:
-  - New "Email Configuration" card with Resend API key input, from email, test email button
-  - Status badge (Configured / Not Configured)
-  - Step-by-step setup instructions with links to resend.com
-  - Test email functionality to verify configuration before saving
-- Updated `src/components/admin/login-page.tsx`:
-  - Added sandbox mode detection (`isSandboxMode`, `sandboxOtp` state)
-  - Added amber "Sandbox Mode" banner showing OTP code when email not configured
-  - Different toast messages for sandbox vs real email mode
-  - Added Info icon import
-- Fixed Bug 1: OTP verify route no longer tries to update authUser for signup (user doesn't exist yet)
-- Fixed Bug 2: setup/login routes now look for `verified: true` OTPs (matching frontend flow that pre-verifies)
-- Lint verified: 0 errors, 0 warnings
-- Browser verified: Login page → signup → OTP with sandbox banner → login → OTP with sandbox banner → all pass
+- Created `src/lib/email.ts` — Email service module using Resend
+- Updated OTP route to send real emails via Resend
+- Updated Settings with email configuration and test email functionality
+- Fixed 3 bugs in OTP verification flow
+- Lint verified, browser verified
 
 Stage Summary:
 - Real OTP email delivery implemented using Resend (free tier: 100 emails/day)
-- Sandbox mode fallback when no API key configured (OTP shown on screen)
-- Email configuration section added to Settings page
-- 3 bugs found and fixed in the OTP verification flow
-- 5 files modified/created
-- All verification passed: lint clean, API tests pass, browser rendering confirmed
+- Sandbox mode fallback when no API key configured
+- 5 files modified/created, all verifications passed
 
 ---
 Task ID: 7
 Agent: Main Agent
-Task: Fix webhook 500 error, NaN display bug, email config for subdomain, verify all webhooks
+Task: Fix webhook 500 error, NaN display bug, email config for subdomain
 
 Work Log:
-- Analyzed WooCommerce webhook screenshot: 4 webhooks created (order.created, order.updated, order.deleted, order.restored) with correct Delivery URL
-- Confirmed webhook endpoint works externally (curl returns 200)
-- Made webhook endpoint bulletproof: handles empty payloads, test pings, invalid JSON, missing billing data — always returns 200
-- Added OPTIONS handler for CORS preflight
-- Fixed ₹NaN display bug: Orders API and Dashboard API returned `totalAmount` but frontend expected `order.total` — added `total` field mapping
-- Fixed Settings page webhook URL: Changed from `window.location.origin` (localhost) to hardcoded production URL
-- Updated recommended webhook events: Removed non-existent `order.status_changed`, added `order.restored` (matches actual WooCommerce topics)
-- Updated email configuration text to clarify `onboarding@resend.dev` works without DNS changes
-- Browser verified: Dashboard shows ₹2,149 revenue (was NaN), orders show ₹1,999 and ₹150 (was NaN), webhook URL shows production URL, correct events listed
+- Made webhook endpoint bulletproof: handles empty payloads, test pings, invalid JSON
+- Fixed ₹NaN display bug: added `total` field mapping
+- Fixed Settings webhook URL to use production URL
+- Updated webhook events list to match actual WooCommerce topics
 
 Stage Summary:
-- Webhook integration fully working — WooCommerce → Dashboard real-time sync confirmed
-- NaN display bug fixed across dashboard and orders views
-- Settings page shows correct production webhook URL
-- Webhook events list matches actual WooCommerce topics
-- Email works without DNS changes using Resend's default domain
-- 4 files modified, all verifications passed
+- Webhook integration fully working, NaN bug fixed, 4 files modified
 
 ---
 Task ID: 8
@@ -100,20 +66,54 @@ Agent: Main Agent
 Task: Phase 1 QA — Fix OTP email delivery, signup duplication bug, email system automation
 
 Work Log:
-- Diagnosed root cause: Resend API key was NEVER saved to database. User entered key in form but test email failed before saving. Email service always fell back to sandbox mode.
-- Rewrote src/lib/email.ts: Fixed singleton caching bug (API key change detection + resetEmailClient), added isEmailConfigured(), replaced all silent catch blocks with proper error logging, added getResendErrorDetail() for actionable error messages
-- Rewrote src/app/api/auth/otp/route.ts: Better error messages for 409/404, OTP housekeeping (cleans expired), emailConfigured flag in response, handles already-verified OTP re-use
-- Rewrote src/app/api/auth/setup/route.ts: CRITICAL FIX — checks user existence BEFORE OTP verification (prevents account duplication), auto-verifies unverified OTPs, cleans up ALL OTP records after signup
-- Rewrote src/app/api/auth/login/route.ts: Verifies password BEFORE OTP (fail fast), auto-verifies unverified OTPs, cleans up used OTP records, updates last login timestamp
-- Rewrote src/components/admin/login-page.tsx: Fixed welcome message (new vs returning user), clears localStorage before setting new session, switchToSignup/switchToLogin reset all state, improved sandbox banner with error detail, typed error handling
-- Updated src/app/api/settings/route.ts: resetEmailClient() called after test email save and settings update, improved emailConfigured check (validates re_ prefix)
-- Updated .env with documented email configuration variables
-- QA verified with Agent Browser: signup works, duplication prevented (409), login works, settings show correct status
+- Root cause: Resend API key was NEVER saved to database
+- Rewrote email.ts: Fixed singleton caching, added resetEmailClient(), isEmailConfigured()
+- Rewrote otp/route.ts: Better errors, OTP cleanup, emailConfigured flag
+- Rewrote setup/route.ts: User existence check BEFORE OTP — prevents duplication
+- Rewrote login/route.ts: Password check first, OTP cleanup
+- Rewrote login-page.tsx: Fixed welcome message, session clearing
+- Updated settings/route.ts: resetEmailClient on save
+- QA verified: signup works, duplication prevented (409), login works
 
 Stage Summary:
-- 7 files rewritten/fixed with comprehensive improvements
-- Root cause identified and fixed: API key was never saved to DB
-- Email system fully automated: key change detection, client reset, proper error handling
-- Signup duplication bug fixed: user existence check before OTP
-- OTP cleanup: records cleaned up after successful auth
-- All QA tests passed with zero errors
+- 7 files fixed, OTP fully automated, signup duplication bug fixed, all QA passed
+
+---
+Task ID: 9
+Agent: Main Agent
+Task: Add Gmail SMTP as primary email provider (no DNS needed, unlimited)
+
+Work Log:
+- User reported Resend "domain not registered" error — Resend requires domain verification for custom from addresses
+- Installed `nodemailer` package for SMTP support
+- Rewrote `src/lib/email.ts` to support dual providers:
+  - Gmail SMTP (primary): Uses Nodemailer, no DNS needed, free unlimited for OTP
+  - Resend API (secondary): Kept as fallback option
+  - Auto-fallback chain: Gmail → Resend → Sandbox mode
+  - Added `getEmailProviderInfo()` utility
+  - Added `getGmailErrorDetail()` for actionable Gmail error messages
+  - Added `getResendErrorDetail()` for actionable Resend error messages
+- Rewrote `src/app/api/settings/route.ts`:
+  - `handleTestEmail()` now supports `email_provider` parameter ('gmail' or 'resend')
+  - Saves Gmail config (gmail_email + gmail_app_password) on successful test
+  - Clears old provider config when switching (prevents conflicts)
+  - GET returns `emailProvider` field ('gmail', 'resend', or 'none')
+  - Email configured check: Gmail takes priority over Resend
+- Rewrote `src/components/admin/settings-view.tsx`:
+  - Added provider selector dropdown (Gmail SMTP recommended / Resend API)
+  - Gmail SMTP tab: Gmail address input, App Password input with show/hide toggle
+  - "Why Gmail SMTP" green info card with benefits
+  - "How to get App Password" step-by-step blue info card with links
+  - Resend API tab: API key input, from email, domain verification note
+  - Status badge shows active provider (Gmail SMTP / Resend API)
+  - Test button context-aware: validates correct fields based on selected provider
+- Updated `.env` with Gmail SMTP configuration template
+- Lint verified: 0 errors
+- Browser verified: Settings page shows new email provider selector, Gmail fields, App Password instructions
+
+Stage Summary:
+- 3 files rewritten for dual-provider email support
+- Gmail SMTP recommended as primary (no DNS needed, free, unlimited)
+- Resend kept as secondary option (100/day free)
+- Professional UI with step-by-step App Password setup guide
+- All verifications passed
