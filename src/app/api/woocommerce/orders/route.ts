@@ -34,7 +34,16 @@ export async function GET(request: NextRequest) {
     ])
 
     return NextResponse.json({
-      orders,
+      orders: orders.map((o) => ({
+        ...o,
+        total: o.totalAmount,
+        dateCreated: o.dateCreated.toISOString(),
+        dateModified: o.dateModified?.toISOString() || null,
+        datePaid: o.datePaid?.toISOString() || null,
+        syncedAt: o.syncedAt.toISOString(),
+        createdAt: o.createdAt.toISOString(),
+        updatedAt: o.updatedAt.toISOString(),
+      })),
       total,
       page,
       limit,

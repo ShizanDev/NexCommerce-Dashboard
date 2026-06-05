@@ -302,8 +302,7 @@ export default function SettingsView() {
     }
   }
 
-  const webhookUrl =
-    typeof window !== 'undefined' ? `${window.location.origin}/api/webhook/woocommerce` : ''
+  const webhookUrl = 'https://woocommercemanager.space-z.ai/api/webhook/woocommerce'
 
   function copyWebhookUrl() {
     navigator.clipboard.writeText(webhookUrl)
@@ -314,9 +313,9 @@ export default function SettingsView() {
 
   const webhookEvents = [
     { event: 'order.created', desc: 'New order placed' },
-    { event: 'order.updated', desc: 'Order details changed' },
+    { event: 'order.updated', desc: 'Order details or status changed' },
     { event: 'order.deleted', desc: 'Order deleted' },
-    { event: 'order.status_changed', desc: 'Order status updated' },
+    { event: 'order.restored', desc: 'Order restored from trash' },
   ]
 
   function getLastSyncText() {
@@ -496,7 +495,7 @@ export default function SettingsView() {
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Default: <code className="bg-muted px-1 rounded">onboarding@resend.dev</code> (works without domain verification). Use a custom domain after verifying it in Resend.
+              Use <code className="bg-muted px-1 rounded">onboarding@resend.dev</code> (works without domain/DNS setup). Or use your own domain after verifying it in Resend.
             </p>
           </div>
 

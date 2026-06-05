@@ -43,6 +43,7 @@ export async function GET() {
         orderNumber: o.orderNumber,
         customerName: o.customerName,
         customerEmail: o.customerEmail,
+        total: o.totalAmount,
         totalAmount: o.totalAmount,
         currency: o.currency,
         paymentMethod: o.paymentMethod,
