@@ -1,31 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { testEmailConnection, resetEmailClient } from '@/lib/email'
+import { getUserIdFromRequest, validateUser, isSuperAdmin } from '@/lib/api-auth'
+import { getEmailProviderInfo } from '@/lib/email'
 
-// GET: Return all system settings
-export async function GET() {
+// GET: Return per-user settings + system-wide email status
+export async function GET(request: NextRequest) {
   try {
-    const settings = await db.systemSettings.findMany()
+    const userId = getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
+    // Per-user settings
+    const userSettings = await db.userSettings.findMany({ where: { userId } })
     const settingsMap: Record<string, string> = {}
-    settings.forEach((s) => {
-      settingsMap[s.key] = s.value
-    })
+    userSettings.forEach((s) => { settingsMap[s.key] = s.value })
 
     const wcConnected = !!(settingsMap.wc_store_url && settingsMap.wc_consumer_key && settingsMap.wc_consumer_secret)
     const lastSync = settingsMap.wc_last_sync || null
 
-    // Check email configuration (Gmail takes priority, then Resend)
-    const hasGmail = !!(settingsMap.gmail_email && settingsMap.gmail_app_password)
-    const hasResend = !!(settingsMap.resend_api_key && settingsMap.resend_api_key.startsWith('re_'))
-    const emailConfigured = hasGmail || hasResend
-    const emailProvider = hasGmail ? 'gmail' : hasResend ? 'resend' : 'none'
+    // System-wide email status (from .env, not DB)
+    const emailInfo = getEmailProviderInfo()
 
     return NextResponse.json({
       ...settingsMap,
       wcConnected: String(wcConnected),
       wc_last_sync: lastSync,
-      emailConfigured: String(emailConfigured),
-      emailProvider,
+      emailConfigured: String(emailInfo.configured),
+      emailProvider: emailInfo.provider,
     })
   } catch (error) {
     console.error('Settings GET error:', error)
@@ -33,32 +35,35 @@ export async function GET() {
   }
 }
 
-// PUT: Bulk upsert settings
+// PUT: Bulk upsert per-user settings
 export async function PUT(request: NextRequest) {
   try {
+    const userId = getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
     const body = await request.json()
 
     if (!body || typeof body !== 'object') {
       return NextResponse.json({ error: 'Settings object required' }, { status: 400 })
     }
 
-    const entries = Object.entries(body) as [string, string][]
-    let emailKeyChanged = false
-    for (const [key, value] of entries) {
-      await db.systemSettings.upsert({
-        where: { key },
-        update: { value },
-        create: { key, value },
-      })
-      if (key === 'resend_api_key' || key === 'email_from' || key === 'gmail_email' || key === 'gmail_app_password') {
-        emailKeyChanged = true
-      }
-    }
+    // Allowed per-user setting keys
+    const allowedKeys = [
+      'currency', 'currency_symbol',
+      'notify_new_order', 'notify_low_stock', 'notify_status_change',
+    ]
 
-    // Reset email client if email settings were changed
-    if (emailKeyChanged) {
-      resetEmailClient()
-      console.log('📧 Email settings updated — client reset for new credentials')
+    const entries = Object.entries(body) as [string, string][]
+    for (const [key, value] of entries) {
+      if (!allowedKeys.includes(key)) continue // Only save allowed per-user keys
+
+      await db.userSettings.upsert({
+        where: { userId_key: { userId, key } },
+        update: { value },
+        create: { userId, key, value },
+      })
     }
 
     return NextResponse.json({ success: true })
@@ -68,18 +73,19 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// POST with actions: test_connection, disconnect, test_email
+// POST with actions: test_connection, disconnect
 export async function POST(request: NextRequest) {
   try {
+    const userId = getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
     const body = await request.json()
     const { action } = body
 
     if (action === 'disconnect') {
-      return handleDisconnect()
-    }
-
-    if (action === 'test_email') {
-      return handleTestEmail(body)
+      return handleDisconnect(userId)
     }
 
     if (action !== 'test_connection') {
@@ -96,7 +102,7 @@ export async function POST(request: NextRequest) {
     const endpoint = `${cleanUrl}/wp-json/wc/v3/orders?per_page=50`
     const auth = Buffer.from(`${consumer_key}:${consumer_secret}`).toString('base64')
 
-    console.log(`🔗 Testing WC connection: ${cleanUrl}`)
+    console.log(`🔗 Testing WC connection: ${cleanUrl} [user: ${userId}]`)
 
     const response = await fetch(endpoint, {
       headers: {
@@ -128,7 +134,6 @@ export async function POST(request: NextRequest) {
     const totalCount = response.headers.get('X-WP-Total') || '0'
     console.log(`✅ WC connection OK — ${orders.length} orders fetched, ${totalCount} total`)
 
-    // Map WC order statuses to payment statuses
     function mapPaymentStatus(status: string): string {
       if (status === 'completed' || status === 'processing') return 'paid'
       if (status === 'refunded') return 'refunded'
@@ -136,7 +141,7 @@ export async function POST(request: NextRequest) {
       return status
     }
 
-    // Sync orders to DB
+    // Sync orders to DB with userId
     let syncedCount = 0
     for (const order of orders) {
       const wooId = order.id as number
@@ -172,6 +177,7 @@ export async function POST(request: NextRequest) {
       await db.wooCommerceOrder.upsert({
         where: { wooOrderId: wooId },
         update: {
+          userId,
           orderNumber: (order.number as string) || String(wooId),
           status: wcStatus,
           customerName,
@@ -190,6 +196,7 @@ export async function POST(request: NextRequest) {
           syncedAt: new Date(),
         },
         create: {
+          userId,
           wooOrderId: wooId,
           orderNumber: (order.number as string) || String(wooId),
           status: wcStatus,
@@ -209,43 +216,64 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      // Upsert Customer
+      // Sync customer with userId
       if (customerEmail) {
-        await db.customer.upsert({
-          where: { email: customerEmail },
-          update: {
-            name: customerName || undefined,
-            phone: billing?.phone || undefined,
-            address: billing?.address_1 || undefined,
-            city: billing?.city || undefined,
-            state: billing?.state || undefined,
-            zipCode: billing?.postcode || undefined,
-            country: billing?.country || undefined,
-          },
-          create: {
-            email: customerEmail,
-            name: customerName,
-            phone: billing?.phone || '',
-            address: billing?.address_1 || '',
-            city: billing?.city || '',
-            state: billing?.state || '',
-            zipCode: billing?.postcode || '',
-            country: billing?.country || '',
-          },
-        })
+        try {
+          await db.customer.upsert({
+            where: { email_userId: { email: customerEmail, userId } },
+            update: {
+              name: customerName || undefined,
+              phone: billing?.phone || undefined,
+              address: billing?.address_1 || undefined,
+              city: billing?.city || undefined,
+              state: billing?.state || undefined,
+              zipCode: billing?.postcode || undefined,
+              country: billing?.country || undefined,
+            },
+            create: {
+              userId,
+              email: customerEmail,
+              name: customerName,
+              phone: billing?.phone || '',
+              address: billing?.address_1 || '',
+              city: billing?.city || '',
+              state: billing?.state || '',
+              zipCode: billing?.postcode || '',
+              country: billing?.country || '',
+            },
+          })
+        } catch {
+          // Customer might exist without userId
+        }
       }
 
       syncedCount++
     }
 
-    // Save credentials to SystemSettings
-    await db.systemSettings.upsert({ where: { key: 'wc_store_url' }, update: { value: cleanUrl }, create: { key: 'wc_store_url', value: cleanUrl } })
-    await db.systemSettings.upsert({ where: { key: 'wc_consumer_key' }, update: { value: consumer_key }, create: { key: 'wc_consumer_key', value: consumer_key } })
-    await db.systemSettings.upsert({ where: { key: 'wc_consumer_secret' }, update: { value: consumer_secret }, create: { key: 'wc_consumer_secret', value: consumer_secret } })
+    // Save WC credentials to UserSettings
+    await db.userSettings.upsert({
+      where: { userId_key: { userId, key: 'wc_store_url' } },
+      update: { value: cleanUrl },
+      create: { userId, key: 'wc_store_url', value: cleanUrl },
+    })
+    await db.userSettings.upsert({
+      where: { userId_key: { userId, key: 'wc_consumer_key' } },
+      update: { value: consumer_key },
+      create: { userId, key: 'wc_consumer_key', value: consumer_key },
+    })
+    await db.userSettings.upsert({
+      where: { userId_key: { userId, key: 'wc_consumer_secret' } },
+      update: { value: consumer_secret },
+      create: { userId, key: 'wc_consumer_secret', value: consumer_secret },
+    })
 
     // Save last sync time
     const syncTime = new Date().toISOString()
-    await db.systemSettings.upsert({ where: { key: 'wc_last_sync' }, update: { value: syncTime }, create: { key: 'wc_last_sync', value: syncTime } })
+    await db.userSettings.upsert({
+      where: { userId_key: { userId, key: 'wc_last_sync' } },
+      update: { value: syncTime },
+      create: { userId, key: 'wc_last_sync', value: syncTime },
+    })
 
     return NextResponse.json({
       success: true,
@@ -264,104 +292,13 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// ─── Test Email Handler (supports Gmail SMTP + Resend) ───────────
-
-async function handleTestEmail(body: Record<string, string>) {
-  const {
-    email_provider,
-    gmail_email,
-    gmail_app_password,
-    resend_api_key,
-    email_from,
-    test_email_to,
-  } = body
-
-  if (!test_email_to) {
-    return NextResponse.json({ success: false, error: 'Recipient email is required' }, { status: 400 })
-  }
-
-  const provider = email_provider as 'gmail' | 'resend' || 'gmail'
-
-  // Test via Gmail SMTP
-  if (provider === 'gmail') {
-    if (!gmail_email || !gmail_app_password) {
-      return NextResponse.json({ success: false, error: 'Gmail email and App Password are required' }, { status: 400 })
-    }
-
-    const result = await testEmailConnection('gmail', {
-      email: gmail_email,
-      password: gmail_app_password,
-      toEmail: test_email_to,
-    })
-
-    if (result.success) {
-      // Save Gmail config
-      await db.systemSettings.upsert({ where: { key: 'gmail_email' }, update: { value: gmail_email }, create: { key: 'gmail_email', value: gmail_email } })
-      await db.systemSettings.upsert({ where: { key: 'gmail_app_password' }, update: { value: gmail_app_password }, create: { key: 'gmail_app_password', value: gmail_app_password } })
-
-      // Clear any old Resend config to avoid confusion
-      try { await db.systemSettings.delete({ where: { key: 'resend_api_key' } }) } catch { /* ignore */ }
-      try { await db.systemSettings.delete({ where: { key: 'email_from' } }) } catch { /* ignore */ }
-
-      resetEmailClient()
-      console.log('📧 Gmail SMTP config saved and client reset')
-
-      return NextResponse.json({
-        success: true,
-        message: `Test email sent successfully via Gmail! OTP emails will now be sent from ${gmail_email}`,
-        provider: 'gmail',
-      })
-    } else {
-      return NextResponse.json({ success: false, error: result.error || 'Failed to send test email via Gmail' })
-    }
-  }
-
-  // Test via Resend
-  if (provider === 'resend') {
-    if (!resend_api_key) {
-      return NextResponse.json({ success: false, error: 'Resend API key is required' }, { status: 400 })
-    }
-
-    const fromEmail = email_from || 'onboarding@resend.dev'
-
-    const result = await testEmailConnection('resend', {
-      apiKey: resend_api_key,
-      fromEmail,
-      toEmail: test_email_to,
-    })
-
-    if (result.success) {
-      // Save Resend config
-      await db.systemSettings.upsert({ where: { key: 'resend_api_key' }, update: { value: resend_api_key }, create: { key: 'resend_api_key', value: resend_api_key } })
-      await db.systemSettings.upsert({ where: { key: 'email_from' }, update: { value: fromEmail }, create: { key: 'email_from', value: fromEmail } })
-
-      // Clear any old Gmail config to avoid confusion
-      try { await db.systemSettings.delete({ where: { key: 'gmail_email' } }) } catch { /* ignore */ }
-      try { await db.systemSettings.delete({ where: { key: 'gmail_app_password' } }) } catch { /* ignore */ }
-
-      resetEmailClient()
-      console.log('📧 Resend config saved and client reset')
-
-      return NextResponse.json({
-        success: true,
-        message: 'Test email sent successfully via Resend! Email service is now active.',
-        provider: 'resend',
-      })
-    } else {
-      return NextResponse.json({ success: false, error: result.error || 'Failed to send test email via Resend' })
-    }
-  }
-
-  return NextResponse.json({ success: false, error: 'Invalid email provider. Use "gmail" or "resend".' }, { status: 400 })
-}
-
 // ─── Disconnect ────────────────────────────────────────────────────
 
-async function handleDisconnect() {
+async function handleDisconnect(userId: string) {
   const keysToDelete = ['wc_store_url', 'wc_consumer_key', 'wc_consumer_secret', 'wc_last_sync', 'wc_webhook_secret']
   for (const key of keysToDelete) {
     try {
-      await db.systemSettings.delete({ where: { key } })
+      await db.userSettings.delete({ where: { userId_key: { userId, key } } })
     } catch {
       // Key may not exist
     }

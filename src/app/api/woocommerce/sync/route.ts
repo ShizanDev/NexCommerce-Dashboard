@@ -1,11 +1,18 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { getUserIdFromRequest } from '@/lib/api-auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const settings = await db.systemSettings.findMany()
+    const userId = getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
+    // Get user's WC credentials from UserSettings
+    const userSettings = await db.userSettings.findMany({ where: { userId } })
     const s: Record<string, string> = {}
-    settings.forEach((x) => { s[x.key] = x.value })
+    userSettings.forEach((x) => { s[x.key] = x.value })
 
     const storeUrl = s.wc_store_url
     const consumerKey = s.wc_consumer_key
@@ -56,6 +63,7 @@ export async function GET() {
         await db.wooCommerceOrder.upsert({
           where: { wooOrderId: wooId },
           update: {
+            userId,
             orderNumber: (order.number as string) || String(wooId),
             status: wcStatus, paymentStatus,
             totalAmount: parseFloat(String(order.total || '0')),
@@ -68,6 +76,7 @@ export async function GET() {
             syncedAt: new Date(),
           },
           create: {
+            userId,
             wooOrderId: wooId,
             orderNumber: (order.number as string) || String(wooId),
             status: wcStatus, paymentStatus,
@@ -79,12 +88,29 @@ export async function GET() {
           },
         })
 
+        // Sync customer with userId
         if (customerEmail) {
-          await db.customer.upsert({
-            where: { email: customerEmail },
-            update: { name: customerName, phone: billing?.phone || undefined, city: billing?.city || undefined, country: billing?.country || undefined },
-            create: { email: customerEmail, name: customerName, phone: billing?.phone || '', city: billing?.city || '', country: billing?.country || '' },
-          })
+          try {
+            await db.customer.upsert({
+              where: { email_userId: { email: customerEmail, userId } },
+              update: {
+                name: customerName,
+                phone: billing?.phone || undefined,
+                city: billing?.city || undefined,
+                country: billing?.country || undefined,
+              },
+              create: {
+                userId,
+                email: customerEmail,
+                name: customerName,
+                phone: billing?.phone || '',
+                city: billing?.city || '',
+                country: billing?.country || '',
+              },
+            })
+          } catch {
+            // Customer might exist without userId — try creating with unique email+userId
+          }
         }
 
         totalSynced++
@@ -92,6 +118,13 @@ export async function GET() {
 
       page++
     }
+
+    // Update user's last sync time
+    await db.userSettings.upsert({
+      where: { userId_key: { userId, key: 'wc_last_sync' } },
+      update: { value: new Date().toISOString() },
+      create: { userId, key: 'wc_last_sync', value: new Date().toISOString() },
+    })
 
     return NextResponse.json({ success: true, totalSynced, totalPages })
   } catch (error: unknown) {

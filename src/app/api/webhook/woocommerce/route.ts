@@ -11,10 +11,14 @@ function mapPaymentStatus(status: string, datePaid: string | null): string {
 
 export async function POST(request: NextRequest) {
   try {
-    // Log incoming webhook for debugging
+    // Log incoming webhook
     const webhookTopic = request.headers.get('x-wc-webhook-topic') || 'unknown'
     const webhookSource = request.headers.get('x-wc-webhook-source') || 'unknown'
     console.log(`🔔 Incoming webhook: topic=${webhookTopic}, source=${webhookSource}`)
+
+    // Get userId from query param (per-user webhook URL)
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('uid') || ''
 
     let order: Record<string, unknown>
     try {
@@ -24,26 +28,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true, note: 'Payload acknowledged' })
     }
 
-    // WooCommerce sends a test ping — just acknowledge it
+    // WooCommerce test ping
     if (!order || !order.id) {
-      console.log('📧 Webhook: No order ID in payload, returning 200 OK')
       return NextResponse.json({ received: true, note: 'No order ID — payload acknowledged' })
     }
 
     const wooId = parseInt(String(order.id), 10)
     if (isNaN(wooId) || wooId <= 0) {
-      console.log(`📧 Webhook: Invalid order ID (${order.id}), returning 200 OK`)
-      return NextResponse.json({ received: true, note: 'Invalid order ID — payload acknowledged' })
+      return NextResponse.json({ received: true, note: 'Invalid order ID' })
     }
 
-    // If this is just a test/hook event without billing, acknowledge it
     const billing = order.billing as Record<string, string> | null
     const shipping = order.shipping as Record<string, string> | null
     const lineItems = order.line_items as Array<Record<string, unknown>> | null
 
     if (!billing) {
-      console.log(`📧 Webhook: Order #${wooId} has no billing data, returning 200 OK`)
-      return NextResponse.json({ received: true, note: 'No billing data — payload acknowledged' })
+      return NextResponse.json({ received: true, note: 'No billing data' })
     }
 
     const customerName = billing
@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
     await db.wooCommerceOrder.upsert({
       where: { wooOrderId: wooId },
       update: {
+        userId,
         orderNumber: String(order.number || wooId),
         status: wcStatus,
         customerName,
@@ -86,6 +87,7 @@ export async function POST(request: NextRequest) {
         syncedAt: new Date(),
       },
       create: {
+        userId,
         wooOrderId: wooId,
         orderNumber: String(order.number || wooId),
         status: wcStatus,
@@ -105,54 +107,59 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    if (customerEmail) {
-      await db.customer.upsert({
-        where: { email: customerEmail },
-        update: {
-          name: customerName || undefined,
-          phone: billing?.phone || undefined,
-          address: billing?.address_1 || undefined,
-          city: billing?.city || undefined,
-          state: billing?.state || undefined,
-          zipCode: billing?.postcode || undefined,
-          country: billing?.country || undefined,
-        },
-        create: {
-          email: customerEmail,
-          name: customerName,
-          phone: billing?.phone || '',
-          address: billing?.address_1 || '',
-          city: billing?.city || '',
-          state: billing?.state || '',
-          zipCode: billing?.postcode || '',
-          country: billing?.country || '',
-        },
+    // Sync customer
+    if (customerEmail && userId) {
+      try {
+        await db.customer.upsert({
+          where: { email_userId: { email: customerEmail, userId } },
+          update: {
+            name: customerName || undefined,
+            phone: billing?.phone || undefined,
+            address: billing?.address_1 || undefined,
+            city: billing?.city || undefined,
+            state: billing?.state || undefined,
+            zipCode: billing?.postcode || undefined,
+            country: billing?.country || undefined,
+          },
+          create: {
+            userId,
+            email: customerEmail,
+            name: customerName,
+            phone: billing?.phone || '',
+            address: billing?.address_1 || '',
+            city: billing?.city || '',
+            state: billing?.state || '',
+            zipCode: billing?.postcode || '',
+            country: billing?.country || '',
+          },
+        })
+      } catch {
+        // Customer might exist without userId
+      }
+    }
+
+    // Update user's last sync time
+    if (userId) {
+      await db.userSettings.upsert({
+        where: { userId_key: { userId, key: 'wc_last_sync' } },
+        update: { value: new Date().toISOString() },
+        create: { userId, key: 'wc_last_sync', value: new Date().toISOString() },
       })
     }
 
-    // Update last sync time
-    await db.systemSettings.upsert({
-      where: { key: 'wc_last_sync' },
-      update: { value: new Date().toISOString() },
-      create: { key: 'wc_last_sync', value: new Date().toISOString() },
-    })
-
-    console.log(`✅ Webhook processed: Order #${wooId} (${wcStatus}) from ${customerName}`)
+    console.log(`✅ Webhook processed: Order #${wooId} (${wcStatus}) from ${customerName} [user: ${userId || 'global'}]`)
 
     return NextResponse.json({ received: true, order_id: wooId })
   } catch (error) {
     console.error('❌ Webhook error:', error)
-    // Still return 200 to WooCommerce so it doesn't retry
     return NextResponse.json({ received: true, error: 'Processed with warnings' })
   }
 }
 
-// WooCommerce may also send GET to test the endpoint
 export async function GET() {
   return NextResponse.json({ status: 'ok', service: 'woocommerce-webhook-receiver' })
 }
 
-// Handle OPTIONS for CORS preflight (just in case)
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 204,

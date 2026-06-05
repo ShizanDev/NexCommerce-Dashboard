@@ -1,11 +1,18 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { getUserIdFromRequest } from '@/lib/api-auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const settings = await db.systemSettings.findMany()
+    const userId = getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
+    // Get user's WC credentials from UserSettings
+    const userSettings = await db.userSettings.findMany({ where: { userId } })
     const settingsMap: Record<string, string> = {}
-    settings.forEach((s) => { settingsMap[s.key] = s.value })
+    userSettings.forEach((s) => { settingsMap[s.key] = s.value })
 
     const storeUrl = settingsMap.wc_store_url
     const consumerKey = settingsMap.wc_consumer_key
@@ -48,7 +55,7 @@ export async function GET() {
       page++
     }
 
-    // Sync products to local DB using corrected field names
+    // Sync products to local DB with userId
     for (const product of allProducts) {
       try {
         const images = product.images as Array<{ src: string }> | null
@@ -57,6 +64,7 @@ export async function GET() {
         await db.product.upsert({
           where: { wooId: product.id as number },
           update: {
+            userId,
             name: (product.name as string) || '',
             sku: (product.sku as string) || '',
             price: parseFloat(String(product.price || '0')) || 0,
@@ -69,6 +77,7 @@ export async function GET() {
             status: (product.status as string) || 'publish',
           },
           create: {
+            userId,
             wooId: product.id as number,
             name: (product.name as string) || '',
             sku: (product.sku as string) || '',
@@ -87,11 +96,11 @@ export async function GET() {
       }
     }
 
-    // Update last sync time
-    await db.systemSettings.upsert({
-      where: { key: 'wc_last_sync' },
+    // Update user's last sync time
+    await db.userSettings.upsert({
+      where: { userId_key: { userId, key: 'wc_last_sync' } },
       update: { value: new Date().toISOString() },
-      create: { key: 'wc_last_sync', value: new Date().toISOString() },
+      create: { userId, key: 'wc_last_sync', value: new Date().toISOString() },
     })
 
     return NextResponse.json({ products: allProducts, total: allProducts.length })

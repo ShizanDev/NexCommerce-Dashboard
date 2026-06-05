@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Search, RefreshCw, Package, ImageOff } from 'lucide-react'
+import { apiGet } from '@/lib/api-fetch'
 import { toast } from 'sonner'
 
 const currencyFormatter = new Intl.NumberFormat('en-IN', {
@@ -38,7 +39,7 @@ export default function ProductsView() {
   const fetchProducts = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/woocommerce/products')
+      const res = await apiGet('/api/woocommerce/products')
       if (!res.ok) throw new Error('Failed to fetch')
       const data = await res.json()
       setProducts(data.products || [])

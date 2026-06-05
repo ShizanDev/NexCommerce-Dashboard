@@ -10,10 +10,13 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarRail,
+  SidebarGroup,
+  SidebarGroupLabel,
 } from '@/components/ui/sidebar'
-import { Store, LayoutDashboard, ShoppingCart, Package, Users, Settings, Wifi, WifiOff, Clock, Activity } from 'lucide-react'
+import { Store, LayoutDashboard, ShoppingCart, Package, Users, Settings, Wifi, WifiOff, Clock, Activity, Shield } from 'lucide-react'
 import { useEffect, useState, useRef } from 'react'
 import { formatDistanceToNow } from 'date-fns'
+import { apiGet } from '@/lib/api-fetch'
 
 const navItems: { view: ActiveView; label: string; icon: React.ElementType; badge?: string }[] = [
   { view: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -24,17 +27,17 @@ const navItems: { view: ActiveView; label: string; icon: React.ElementType; badg
 ]
 
 export function AppSidebar() {
-  const { activeView, setActiveView } = useAppStore()
+  const { activeView, setActiveView, userRole, userId } = useAppStore()
   const [wcConnected, setWcConnected] = useState(false)
   const [lastSync, setLastSync] = useState<string | null>(null)
 
   const mountedRef = useRef(false)
 
   useEffect(() => {
-    // Subscribe to settings updates
     const fetchSettings = async () => {
       try {
-        const res = await fetch('/api/settings')
+        const res = await apiGet('/api/settings')
+        if (!res.ok) return
         const data = await res.json()
         if (mountedRef.current) {
           setWcConnected(data.wcConnected === 'true' || data.wcConnected === true)
@@ -62,6 +65,8 @@ export function AppSidebar() {
       return null
     }
   }
+
+  const isSuperAdmin = userRole === 'super_admin'
 
   return (
     <Sidebar collapsible="icon">
@@ -101,10 +106,29 @@ export function AppSidebar() {
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
+
+        {isSuperAdmin && (
+          <SidebarGroup className="mt-4">
+            <SidebarGroupLabel className="text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
+              Administration
+            </SidebarGroupLabel>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={activeView === 'super-admin'}
+                  onClick={() => setActiveView('super-admin')}
+                  tooltip="Super Admin"
+                >
+                  <Shield className="size-4 text-amber-600" />
+                  <span>Super Admin</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="border-t px-4 py-3 space-y-2">
-        {/* WC Connection Status */}
         <div className="flex items-center gap-2 text-xs">
           {wcConnected ? (
             <>
@@ -127,10 +151,9 @@ export function AppSidebar() {
           )}
         </div>
 
-        {/* Version */}
         <div className="flex items-center text-xs text-muted-foreground">
           <Activity className="mr-1.5 size-3" />
-          <span className="font-mono">v2.2.0</span>
+          <span className="font-mono">v2.3.0</span>
         </div>
       </SidebarFooter>
 

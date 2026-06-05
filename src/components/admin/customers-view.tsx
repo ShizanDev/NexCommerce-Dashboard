@@ -15,10 +15,11 @@ import {
 } from '@/components/ui/table'
 import { Search, RefreshCw, ChevronLeft, ChevronRight, Users } from 'lucide-react'
 import { toast } from 'sonner'
+import { apiGet } from '@/lib/api-fetch'
 
-const currencyFormatter = new Intl.NumberFormat('en-IN', {
+const getCurrencyFormatter = (currency?: string) => new Intl.NumberFormat('en-US', {
   style: 'currency',
-  currency: 'INR',
+  currency: currency || 'INR',
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
 })
@@ -51,7 +52,7 @@ export default function CustomersView() {
       params.set('limit', '20')
       if (search) params.set('search', search)
 
-      const res = await fetch(`/api/woocommerce/customers?${params}`)
+      const res = await apiGet(`/api/woocommerce/customers?${params}`)
       const data = await res.json()
       setCustomers(data.customers || [])
       setTotal(data.total)
@@ -144,7 +145,7 @@ export default function CustomersView() {
                       {[customer.city, customer.country].filter(Boolean).join(', ') || '-'}
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {currencyFormatter.format(customer.totalSpent)}
+                      {getCurrencyFormatter().format(customer.totalSpent)}
                     </TableCell>
                     <TableCell className="text-right">{customer.orderCount}</TableCell>
                   </TableRow>

@@ -10,14 +10,15 @@ datasource db {
 // ============ AUTH USER ============
 
 model AuthUser {
-  id         String   @id @default(cuid())
-  email      String   @unique
-  password   String
-  name       String   @default("")
-  role       String   @default("admin")
-  emailVerified Boolean @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String    @default("")
+  role          String    @default("admin") // "admin" | "super_admin"
+  emailVerified Boolean   @default(false)
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 // ============ OTP VERIFICATION ============
@@ -37,6 +38,7 @@ model OtpRecord {
 model WooCommerceOrder {
   id              String    @id @default(cuid())
   wooOrderId      Int       @unique
+  userId          String    @default("")
   orderNumber     String
   status          String
   customerName    String
@@ -55,14 +57,17 @@ model WooCommerceOrder {
   syncedAt        DateTime  @default(now())
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+
+  @@index([userId])
 }
 
 // ============ CUSTOMERS (synced from WC) ============
 
 model Customer {
   id        String   @id @default(cuid())
+  userId    String   @default("")
   name      String
-  email     String   @unique
+  email     String
   phone     String   @default("")
   address   String   @default("")
   city      String   @default("")
@@ -73,31 +78,51 @@ model Customer {
   orderCount Int    @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([email, userId])
+  @@index([userId])
 }
 
 // ============ PRODUCTS (synced from WC) ============
 
 model Product {
   id            String   @id @default(cuid())
-  wooId        Int      @unique
-  name         String
-  sku          String   @default("")
-  price        Float    @default(0)
-  regularPrice Float    @default(0)
-  salePrice    Float    @default(0)
-  imageUrl     String   @default("")
-  category     String   @default("")
-  status       String   @default("publish")
-  stockStatus  String   @default("instock")
-  stockQty     Int      @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  userId        String   @default("")
+  wooId         Int      @unique
+  name          String
+  sku           String   @default("")
+  price         Float    @default(0)
+  regularPrice  Float    @default(0)
+  salePrice     Float    @default(0)
+  imageUrl      String   @default("")
+  category      String   @default("")
+  status        String   @default("publish")
+  stockStatus   String   @default("instock")
+  stockQty      Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
 }
 
-// ============ SYSTEM SETTINGS ============
+// ============ SYSTEM SETTINGS (global / owner-only) ============
 
 model SystemSettings {
   id    String @id @default(cuid())
   key   String @unique
   value String @default("")
+}
+
+// ============ USER SETTINGS (per-user: WC, currency, notifications) ============
+
+model UserSettings {
+  id     String @id @default(cuid())
+  userId String
+  key    String
+  value  String @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, key])
+  @@index([userId])
 }

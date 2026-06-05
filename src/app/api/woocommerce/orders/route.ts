@@ -1,15 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { getUserIdFromRequest, validateUser } from '@/lib/api-auth'
 
 export async function GET(request: NextRequest) {
   try {
+    const userId = getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search') || ''
     const status = searchParams.get('status') || ''
     const page = parseInt(searchParams.get('page') || '1', 10)
     const limit = parseInt(searchParams.get('limit') || '20', 10)
 
-    const where: Record<string, unknown> = {}
+    const where: Record<string, unknown> = { userId }
 
     if (search) {
       where.OR = [
@@ -25,12 +31,12 @@ export async function GET(request: NextRequest) {
 
     const [orders, total] = await Promise.all([
       db.wooCommerceOrder.findMany({
-        where: Object.keys(where).length > 0 ? where : undefined,
+        where,
         orderBy: { dateCreated: 'desc' },
         skip: (page - 1) * limit,
         take: limit,
       }),
-      db.wooCommerceOrder.count({ where: Object.keys(where).length > 0 ? where : undefined }),
+      db.wooCommerceOrder.count({ where }),
     ])
 
     return NextResponse.json({

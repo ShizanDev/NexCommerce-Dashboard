@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { getUserIdFromRequest } from '@/lib/api-auth'
 
 export async function GET(request: NextRequest) {
   try {
+    const userId = getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search') || ''
     const page = parseInt(searchParams.get('page') || '1', 10)
     const limit = parseInt(searchParams.get('limit') || '20', 10)
 
-    const where: Record<string, unknown> = {}
+    const where: Record<string, unknown> = { userId }
 
     if (search) {
       where.OR = [
@@ -19,19 +25,19 @@ export async function GET(request: NextRequest) {
 
     const [customers, total] = await Promise.all([
       db.customer.findMany({
-        where: Object.keys(where).length > 0 ? where : undefined,
+        where,
         skip: (page - 1) * limit,
         take: limit,
         orderBy: { name: 'asc' },
       }),
-      db.customer.count({ where: Object.keys(where).length > 0 ? where : undefined }),
+      db.customer.count({ where }),
     ])
 
-    // Calculate total spent and order count per customer from orders
+    // Enrich with per-user order data
     const enrichedCustomers = await Promise.all(
       customers.map(async (customer) => {
         const orders = await db.wooCommerceOrder.findMany({
-          where: { customerEmail: customer.email },
+          where: { customerEmail: customer.email, userId },
           select: { totalAmount: true, paymentStatus: true },
         })
         const paidOrders = orders.filter((o) => o.paymentStatus === 'paid')

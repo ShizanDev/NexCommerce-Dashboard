@@ -46,14 +46,10 @@ import {
   Clock,
   Unplug,
   Shield,
-  Mail,
-  MailCheck,
-  MailX,
-  Send,
-  ExternalLink,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
+import { apiGet, apiPost, apiPut } from '@/lib/api-fetch'
 
 interface SettingsMap {
   [key: string]: string
@@ -76,19 +72,6 @@ export default function SettingsView() {
   const [showKey, setShowKey] = useState(false)
   const [showSecret, setShowSecret] = useState(false)
 
-  // Form fields - Email Config
-  const [emailProvider, setEmailProvider] = useState<'gmail' | 'resend'>('gmail')
-  const [gmailEmail, setGmailEmail] = useState('')
-  const [gmailAppPassword, setGmailAppPassword] = useState('')
-  const [showGmailPassword, setShowGmailPassword] = useState(false)
-  const [resendApiKey, setResendApiKey] = useState('')
-  const [emailFrom, setEmailFrom] = useState('onboarding@resend.dev')
-  const [testEmailTo, setTestEmailTo] = useState('')
-  const [showEmailKey, setShowEmailKey] = useState(false)
-  const [testingEmail, setTestingEmail] = useState(false)
-  const [emailConfigured, setEmailConfigured] = useState(false)
-  const [activeProvider, setActiveProvider] = useState<'gmail' | 'resend' | 'none'>('none')
-
   // General settings
   const [currency, setCurrency] = useState('INR')
   const [currencySymbol, setCurrencySymbol] = useState('₹')
@@ -102,10 +85,13 @@ export default function SettingsView() {
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle')
   const [lastSync, setLastSync] = useState<string | null>(null)
 
+  // Email status (read-only from backend)
+  const [emailConfigured, setEmailConfigured] = useState(false)
+
   async function fetchSettings() {
     setLoading(true)
     try {
-      const res = await fetch('/api/settings')
+      const res = await apiGet('/api/settings')
       const data = await res.json()
       setSettings(data)
 
@@ -114,20 +100,8 @@ export default function SettingsView() {
       setConsumerKey(data.wc_consumer_key || '')
       setConsumerSecret(data.wc_consumer_secret || '')
 
-      // Email config
+      // Email status (read-only, configured by owner)
       setEmailConfigured(data.emailConfigured === 'true' || data.emailConfigured === true)
-      setActiveProvider(data.emailProvider || 'none')
-      setGmailEmail(data.gmail_email || '')
-      setGmailAppPassword(data.gmail_app_password || '')
-      setResendApiKey(data.resend_api_key || '')
-      setEmailFrom(data.email_from || 'onboarding@resend.dev')
-
-      // Auto-detect which provider is configured
-      if (data.gmail_email && data.gmail_app_password) {
-        setEmailProvider('gmail')
-      } else if (data.resend_api_key) {
-        setEmailProvider('resend')
-      }
 
       setCurrency(data.currency || 'INR')
       setCurrencySymbol(data.currency_symbol || '₹')
@@ -156,15 +130,11 @@ export default function SettingsView() {
     setTesting(true)
     setConnectionStatus('idle')
     try {
-      const res = await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'test_connection',
-          store_url: storeUrl,
-          consumer_key: consumerKey,
-          consumer_secret: consumerSecret,
-        }),
+      const res = await apiPost('/api/settings', {
+        action: 'test_connection',
+        store_url: storeUrl,
+        consumer_key: consumerKey,
+        consumer_secret: consumerSecret,
       })
       const data = await res.json()
       if (data.success) {
@@ -187,7 +157,7 @@ export default function SettingsView() {
   async function handleSync() {
     setSyncing(true)
     try {
-      const res = await fetch('/api/woocommerce/sync')
+      const res = await apiGet('/api/woocommerce/sync')
       const data = await res.json()
       if (data.success) {
         toast.success(`Synced ${data.totalSynced} orders from WooCommerce`)
@@ -205,11 +175,7 @@ export default function SettingsView() {
 
   async function handleDisconnect() {
     try {
-      const res = await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'disconnect' }),
-      })
+      const res = await apiPost('/api/settings', { action: 'disconnect' })
       const data = await res.json()
       if (data.success) {
         setConnectionStatus('disconnected')
@@ -227,63 +193,18 @@ export default function SettingsView() {
     }
   }
 
-  async function handleTestEmail() {
-    setTestingEmail(true)
-    try {
-      const payload: Record<string, string> = {
-        email_provider: emailProvider,
-        test_email_to: testEmailTo,
-      }
-
-      if (emailProvider === 'gmail') {
-        payload.gmail_email = gmailEmail
-        payload.gmail_app_password = gmailAppPassword
-      } else {
-        payload.resend_api_key = resendApiKey
-        payload.email_from = emailFrom
-      }
-
-      const res = await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'test_email', ...payload }),
-      })
-      const data = await res.json()
-      if (data.success) {
-        setEmailConfigured(true)
-        setActiveProvider(emailProvider)
-        toast.success(data.message || `Test email sent!`, { duration: 5000 })
-        fetchSettings()
-      } else {
-        toast.error(data.error || 'Failed to send test email')
-      }
-    } catch {
-      toast.error('Failed to test email')
-    } finally {
-      setTestingEmail(false)
-    }
-  }
-
   async function handleSave() {
     setSaving(true)
     try {
-      const newSettings: SettingsMap = {
-        ...settings,
+      const res = await apiPut('/api/settings', {
         currency,
         currency_symbol: currencySymbol,
         notify_new_order: String(notifyNewOrder),
         notify_low_stock: String(notifyLowStock),
         notify_status_change: String(notifyStatusChange),
-      }
-
-      const res = await fetch('/api/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newSettings),
       })
 
       if (res.ok) {
-        setSettings(newSettings)
         toast.success('Settings saved successfully')
       } else {
         toast.error('Failed to save settings')
@@ -298,16 +219,12 @@ export default function SettingsView() {
   async function handleReset() {
     setSaving(true)
     try {
-      const res = await fetch('/api/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          currency: 'INR',
-          currency_symbol: '₹',
-          notify_new_order: 'true',
-          notify_low_stock: 'true',
-          notify_status_change: 'false',
-        }),
+      const res = await apiPut('/api/settings', {
+        currency: 'INR',
+        currency_symbol: '₹',
+        notify_new_order: 'true',
+        notify_low_stock: 'true',
+        notify_status_change: 'false',
       })
 
       if (res.ok) {
@@ -325,10 +242,20 @@ export default function SettingsView() {
     }
   }
 
-  const webhookUrl = 'https://woocommercemanager.space-z.ai/api/webhook/woocommerce'
+  // Get webhook URL with userId
+  function getWebhookUrl() {
+    try {
+      const session = JSON.parse(localStorage.getItem('wc_dashboard_session') || '{}')
+      const uid = session.id || ''
+      if (uid) {
+        return `https://woocommercemanager.space-z.ai/api/webhook/woocommerce?uid=${uid}`
+      }
+    } catch { /* ignore */ }
+    return 'https://woocommercemanager.space-z.ai/api/webhook/woocommerce'
+  }
 
   function copyWebhookUrl() {
-    navigator.clipboard.writeText(webhookUrl)
+    navigator.clipboard.writeText(getWebhookUrl())
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
     toast.success('Webhook URL copied')
@@ -356,7 +283,7 @@ export default function SettingsView() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground mt-1">Configure your WooCommerce connection, email, and preferences</p>
+        <p className="text-muted-foreground mt-1">Configure your WooCommerce connection and preferences</p>
       </div>
 
       {/* Connection Status Banner */}
@@ -439,256 +366,32 @@ export default function SettingsView() {
         </CardContent>
       </Card>
 
-      {/* ─── Email Configuration ──────────────────────────── */}
+      {/* Email Status (read-only) */}
       <Card className={emailConfigured
         ? 'border-emerald-200 dark:border-emerald-800'
         : 'border-amber-200 dark:border-amber-800'
       }>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            {emailConfigured ? (
-              <MailCheck className="h-5 w-5 text-emerald-600" />
-            ) : (
-              <Mail className="h-5 w-5 text-amber-600" />
-            )}
-            Email Configuration
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Shield className={`h-5 w-5 ${emailConfigured ? 'text-emerald-600' : 'text-amber-600'}`} />
+            Email Service
           </CardTitle>
-          <CardDescription>
-            Configure email service for OTP verification (login & signup codes)
-          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Status indicator */}
+        <CardContent>
           <div className="flex items-center gap-2 flex-wrap">
             {emailConfigured ? (
               <>
-                <Badge className="bg-emerald-600">Email Active</Badge>
-                <Badge variant="outline" className="text-xs">
-                  {activeProvider === 'gmail' ? 'Gmail SMTP' : 'Resend API'}
-                </Badge>
+                <Badge className="bg-emerald-600">✓ Email Active</Badge>
+                <span className="text-xs text-muted-foreground">OTP verification emails are being sent automatically</span>
               </>
             ) : (
-              <Badge variant="outline" className="text-amber-600 border-amber-300">
-                <MailX className="h-3 w-3 mr-1" /> Not Configured
-              </Badge>
+              <>
+                <Badge variant="outline" className="text-amber-600 border-amber-300">
+                  Sandbox Mode
+                </Badge>
+                <span className="text-xs text-muted-foreground">Email not configured — OTP codes will be shown on-screen during login/signup</span>
+              </>
             )}
-            {!emailConfigured && (
-              <span className="text-xs text-muted-foreground">OTP codes will be shown on-screen in sandbox mode</span>
-            )}
-          </div>
-
-          {/* Provider Selector */}
-          <div className="space-y-2">
-            <Label>Email Provider</Label>
-            <Select value={emailProvider} onValueChange={(v) => setEmailProvider(v as 'gmail' | 'resend')}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="gmail">
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4" />
-                    <div>
-                      <p className="font-medium">Gmail SMTP (Recommended)</p>
-                      <p className="text-xs text-muted-foreground">Free, no DNS needed, unlimited OTP emails</p>
-                    </div>
-                  </div>
-                </SelectItem>
-                <SelectItem value="resend">
-                  <div className="flex items-center gap-2">
-                    <Send className="h-4 w-4" />
-                    <div>
-                      <p className="font-medium">Resend API</p>
-                      <p className="text-xs text-muted-foreground">Professional email service, 100 emails/day free</p>
-                    </div>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* ─── Gmail SMTP Configuration ─── */}
-          {emailProvider === 'gmail' && (
-            <>
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 dark:border-emerald-800 dark:bg-emerald-950/10">
-                <div className="flex gap-2">
-                  <Shield className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
-                  <div className="text-xs text-emerald-800 dark:text-emerald-300 space-y-1">
-                    <p className="font-medium">Why Gmail SMTP?</p>
-                    <ul className="list-disc list-inside space-y-0.5">
-                      <li><strong>No domain/DNS setup needed</strong> — works with any Gmail account</li>
-                      <li><strong>Free & unlimited</strong> — no daily sending limit for OTP use</li>
-                      <li><strong>Instant delivery</strong> — emails arrive in seconds</li>
-                      <li><strong>Private & secure</strong> — emails sent from your own Gmail</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="gmail-email">Gmail Address</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="gmail-email"
-                    type="email"
-                    placeholder="your-email@gmail.com"
-                    value={gmailEmail}
-                    onChange={(e) => setGmailEmail(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">Your Gmail address that will send OTP emails</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="gmail-app-password">
-                  Gmail App Password
-                  <a
-                    href="https://myaccount.google.com/apppasswords"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="ml-2 inline-flex items-center text-xs text-emerald-600 hover:text-emerald-700"
-                  >
-                    Get App Password <ExternalLink className="h-3 w-3 ml-0.5" />
-                  </a>
-                </Label>
-                <div className="relative">
-                  <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="gmail-app-password"
-                    type={showGmailPassword ? 'text' : 'password'}
-                    placeholder="xxxx xxxx xxxx xxxx"
-                    value={gmailAppPassword}
-                    onChange={(e) => setGmailAppPassword(e.target.value)}
-                    className="pl-10 pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowGmailPassword(!showGmailPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showGmailPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  NOT your regular password. Create an App Password at Google Account → Security → App Passwords
-                </p>
-              </div>
-
-              {/* How to get App Password */}
-              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/20">
-                <div className="flex gap-2">
-                  <Info className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
-                  <div className="text-xs text-blue-800 dark:text-blue-300 space-y-1">
-                    <p className="font-medium">How to get a Gmail App Password:</p>
-                    <ol className="list-decimal list-inside space-y-0.5">
-                      <li>Go to <a href="https://myaccount.google.com/security" target="_blank" rel="noopener noreferrer" className="underline font-medium">Google Account → Security</a></li>
-                      <li>Make sure <strong>2-Step Verification is ON</strong> (required for App Passwords)</li>
-                      <li>Search for "App passwords" or go to <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="underline font-medium">myaccount.google.com/apppasswords</a></li>
-                      <li>Enter name: <code className="bg-blue-100 px-1 rounded">WC Dashboard</code></li>
-                      <li>Click <strong>Create</strong> — copy the 16-character password</li>
-                      <li>Paste it in the App Password field above</li>
-                    </ol>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* ─── Resend Configuration ─── */}
-          {emailProvider === 'resend' && (
-            <>
-              <div className="rounded-lg border border-purple-200 bg-purple-50/50 p-3 dark:border-purple-800 dark:bg-purple-950/10">
-                <div className="flex gap-2">
-                  <Info className="h-4 w-4 text-purple-600 mt-0.5 shrink-0" />
-                  <div className="text-xs text-purple-800 dark:text-purple-300 space-y-1">
-                    <p className="font-medium">About Resend</p>
-                    <p>Professional email API service. Free tier: <strong>100 emails/day</strong>.</p>
-                    <p>For custom domain emails, you need to verify your domain at resend.com/domains.</p>
-                    <p>For testing, use <code className="bg-purple-100 px-1 rounded">onboarding@resend.dev</code> as the from address.</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="resend-api-key">
-                  Resend API Key
-                  <a
-                    href="https://resend.com/api-keys"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="ml-2 inline-flex items-center text-xs text-emerald-600 hover:text-emerald-700"
-                  >
-                    Get free API key <ExternalLink className="h-3 w-3 ml-0.5" />
-                  </a>
-                </Label>
-                <div className="relative">
-                  <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="resend-api-key"
-                    type={showEmailKey ? 'text' : 'password'}
-                    placeholder="re_xxxxxxxxxxxxx"
-                    value={resendApiKey}
-                    onChange={(e) => setResendApiKey(e.target.value)}
-                    className="pl-10 pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowEmailKey(!showEmailKey)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showEmailKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email-from">From Email Address</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="email-from"
-                    type="email"
-                    placeholder="onboarding@resend.dev"
-                    value={emailFrom}
-                    onChange={(e) => setEmailFrom(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-            </>
-          )}
-
-          <Separator />
-
-          {/* Test Email */}
-          <div className="space-y-2">
-            <Label htmlFor="test-email">Send Test Email</Label>
-            <div className="flex gap-2">
-              <Input
-                id="test-email"
-                type="email"
-                placeholder="your-email@gmail.com"
-                value={testEmailTo}
-                onChange={(e) => setTestEmailTo(e.target.value)}
-                className="flex-1"
-              />
-              <Button
-                variant="outline"
-                onClick={handleTestEmail}
-                disabled={testingEmail || !testEmailTo || (emailProvider === 'gmail' ? (!gmailEmail || !gmailAppPassword) : !resendApiKey)}
-              >
-                {testingEmail ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" /> Sending...</>
-                ) : (
-                  <><Send className="h-4 w-4 mr-1" /> Test</>
-                )}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Enter the email where you want to receive the test. If successful, this will become your OTP email service.
-            </p>
           </div>
         </CardContent>
       </Card>
@@ -829,7 +532,7 @@ export default function SettingsView() {
           <div className="space-y-2">
             <Label>Webhook Delivery URL</Label>
             <div className="flex gap-2">
-              <Input value={webhookUrl} readOnly className="font-mono text-sm bg-muted" />
+              <Input value={getWebhookUrl()} readOnly className="font-mono text-sm bg-muted" />
               <Button variant="outline" size="icon" onClick={copyWebhookUrl}>
                 {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
               </Button>
@@ -868,7 +571,6 @@ export default function SettingsView() {
                 <p className="font-medium">Webhook Security</p>
                 <p className="mt-0.5">
                   WooCommerce webhooks use HMAC-SHA256 signatures. Set a Webhook Secret in WooCommerce settings for additional verification.
-                  Our endpoint validates all incoming webhook payloads.
                 </p>
               </div>
             </div>

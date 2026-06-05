@@ -29,6 +29,7 @@ import { Area, AreaChart, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
+import { apiGet } from '@/lib/api-fetch'
 
 const chartConfig = {
   revenue: {
@@ -65,14 +66,9 @@ interface DashboardData {
   }[]
   statusBreakdown: Record<string, number>
   wcConnected: boolean
+  currency: string
+  currencySymbol: string
 }
-
-const currencyFormatter = new Intl.NumberFormat('en-IN', {
-  style: 'currency',
-  currency: 'INR',
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0,
-})
 
 function StatCard({
   title,
@@ -120,11 +116,22 @@ export default function DashboardView() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Dynamic currency formatter
+  const currencyCode = data?.currency || 'INR'
+  const currencySymbol = data?.currencySymbol || '₹'
+  const currencyFormatter = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currencyCode,
+    currencyDisplay: 'symbol',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })
+
   async function fetchDashboard() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/dashboard')
+      const res = await apiGet('/api/dashboard')
       if (!res.ok) throw new Error('Failed to fetch')
       const json = await res.json()
       setData(json)
@@ -216,7 +223,7 @@ export default function DashboardView() {
                   tickLine={false}
                   axisLine={false}
                   fontSize={12}
-                  tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
+                  tickFormatter={(v) => `${currencySymbol}${(v / 1000).toFixed(0)}k`}
                 />
                 <ChartTooltip
                   content={

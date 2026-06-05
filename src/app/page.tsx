@@ -20,9 +20,10 @@ import OrdersView from '@/components/admin/orders-view'
 import ProductsView from '@/components/admin/products-view'
 import CustomersView from '@/components/admin/customers-view'
 import SettingsView from '@/components/admin/settings-view'
+import SuperAdminView from '@/components/admin/super-admin-view'
 
 export default function Home() {
-  const { isLoggedIn, activeView, setLoggedIn, userName } = useAppStore()
+  const { isLoggedIn, activeView, setLoggedIn, userName, userRole, setActiveView } = useAppStore()
   const [mounted, setMounted] = useState(false)
   const hydrated = useRef(false)
 
@@ -36,7 +37,7 @@ export default function Home() {
       try {
         const session = JSON.parse(saved)
         if (session.isLoggedIn) {
-          setLoggedIn(true, session.name)
+          setLoggedIn(true, session.name, session.id, session.role)
         }
       } catch {
         // ignore parse errors
@@ -66,6 +67,7 @@ export default function Home() {
       case 'products': return <ProductsView />
       case 'customers': return <CustomersView />
       case 'settings': return <SettingsView />
+      case 'super-admin': return <SuperAdminView />
       default: return <DashboardView />
     }
   }
@@ -76,11 +78,13 @@ export default function Home() {
     products: 'Products',
     customers: 'Customers',
     settings: 'Settings',
+    'super-admin': 'Super Admin',
   }
 
   function handleSignOut() {
     localStorage.removeItem('wc_dashboard_session')
-    setLoggedIn(false)
+    setLoggedIn(false, '', '', '')
+    setActiveView('dashboard')
   }
 
   const initials = userName
@@ -114,6 +118,9 @@ export default function Home() {
                 <DropdownMenuItem disabled>
                   <User className="mr-2 h-4 w-4" />
                   <span>{userName || 'Admin'}</span>
+                  {userRole === 'super_admin' && (
+                    <span className="ml-auto text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">OWNER</span>
+                  )}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut} className="text-red-600 focus:text-red-600">

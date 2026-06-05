@@ -21,8 +21,6 @@ export async function POST(request: NextRequest) {
     }
 
     // ── CRITICAL: Check if user already exists BEFORE OTP check ──
-    // This prevents the scenario where an existing account is "logged into"
-    // instead of creating a new account
     const existing = await db.authUser.findUnique({ where: { email } })
     if (existing) {
       console.warn(`⚠️ Signup attempted for existing email: ${email} (user: ${existing.id})`)
@@ -33,7 +31,7 @@ export async function POST(request: NextRequest) {
       }, { status: 409 })
     }
 
-    // ── Verify OTP (already verified by /api/auth/otp, double-check) ──
+    // ── Verify OTP ──
     const otpRecord = await db.otpRecord.findFirst({
       where: {
         email,
@@ -46,7 +44,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (!otpRecord) {
-      // Check if there's an unverified one (frontend may have skipped verify step)
+      // Check if there's an unverified one (auto-verify)
       const unverified = await db.otpRecord.findFirst({
         where: {
           email,
@@ -59,16 +57,18 @@ export async function POST(request: NextRequest) {
       })
 
       if (unverified) {
-        // Auto-verify it (frontend should have verified already)
         await db.otpRecord.update({
           where: { id: unverified.id },
           data: { verified: true },
         })
-        console.log(`📝 Auto-verified unverified OTP for signup: ${email}`)
       } else {
         return NextResponse.json({ success: false, error: 'Invalid or expired OTP. Please request a new one.' }, { status: 401 })
       }
     }
+
+    // ── Determine role: first user becomes super_admin ──
+    const userCount = await db.authUser.count()
+    const role = userCount === 0 ? 'super_admin' : 'admin'
 
     // ── Create the new user ──
     const hashedPassword = await hashPassword(password)
@@ -78,27 +78,45 @@ export async function POST(request: NextRequest) {
         email,
         password: hashedPassword,
         name,
-        role: 'admin',
+        role,
         emailVerified: true,
       },
     })
 
-    console.log(`👤 New user created: ${email} (ID: ${user.id}, name: ${name})`)
+    console.log(`👤 New user created: ${email} (ID: ${user.id}, role: ${role}, name: ${name})`)
 
-    // ── Clean up ALL OTP records for this email (both signup and any lingering login OTPs) ──
+    // ── Clean up ALL OTP records for this email ──
     await db.otpRecord.deleteMany({ where: { email } })
 
-    // ── Seed default currency settings (only if not already set) ──
-    await db.systemSettings.upsert({
-      where: { key: 'currency' },
+    // ── Seed default currency in UserSettings ──
+    await db.userSettings.upsert({
+      where: { userId_key: { userId: user.id, key: 'currency' } },
       update: {},
-      create: { key: 'currency', value: 'INR' },
+      create: { userId: user.id, key: 'currency', value: 'INR' },
     })
 
-    await db.systemSettings.upsert({
-      where: { key: 'currency_symbol' },
+    await db.userSettings.upsert({
+      where: { userId_key: { userId: user.id, key: 'currency_symbol' } },
       update: {},
-      create: { key: 'currency_symbol', value: '₹' },
+      create: { userId: user.id, key: 'currency_symbol', value: '₹' },
+    })
+
+    await db.userSettings.upsert({
+      where: { userId_key: { userId: user.id, key: 'notify_new_order' } },
+      update: {},
+      create: { userId: user.id, key: 'notify_new_order', value: 'true' },
+    })
+
+    await db.userSettings.upsert({
+      where: { userId_key: { userId: user.id, key: 'notify_low_stock' } },
+      update: {},
+      create: { userId: user.id, key: 'notify_low_stock', value: 'true' },
+    })
+
+    await db.userSettings.upsert({
+      where: { userId_key: { userId: user.id, key: 'notify_status_change' } },
+      update: {},
+      create: { userId: user.id, key: 'notify_status_change', value: 'false' },
     })
 
     return NextResponse.json({

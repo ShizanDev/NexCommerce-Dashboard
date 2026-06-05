@@ -1,15 +1,35 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { getUserIdFromRequest, validateUser } from '@/lib/api-auth'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const allOrders = await db.wooCommerceOrder.findMany()
-    const customers = await db.customer.findMany()
-    const settings = await db.systemSettings.findMany()
+    const userId = getUserIdFromRequest(request)
+    if (!userId) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
 
+    const user = await validateUser(userId)
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 401 })
+    }
+
+    // ── Fetch per-user data ──
+    const allOrders = await db.wooCommerceOrder.findMany({
+      where: { userId },
+    })
+    const customers = await db.customer.findMany({
+      where: { userId },
+    })
+
+    // ── Per-user settings ──
+    const userSettings = await db.userSettings.findMany({ where: { userId } })
     const settingsMap: Record<string, string> = {}
-    settings.forEach((s) => { settingsMap[s.key] = s.value })
+    userSettings.forEach((s) => { settingsMap[s.key] = s.value })
+
     const wcConnected = !!(settingsMap.wc_store_url && settingsMap.wc_consumer_key && settingsMap.wc_consumer_secret)
+    const currency = settingsMap.currency || 'INR'
+    const currencySymbol = settingsMap.currency_symbol || '₹'
 
     // Stats
     const paidOrders = allOrders.filter((o) => o.paymentStatus === 'paid')
@@ -68,6 +88,8 @@ export async function GET() {
       recentOrders,
       statusBreakdown,
       wcConnected,
+      currency,
+      currencySymbol,
     })
   } catch (error) {
     console.error('Dashboard error:', error)

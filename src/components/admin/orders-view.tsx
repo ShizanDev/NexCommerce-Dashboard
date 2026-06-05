@@ -39,6 +39,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
+import { apiGet } from '@/lib/api-fetch'
 
 const statusColors: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300',
@@ -50,9 +51,9 @@ const statusColors: Record<string, string> = {
   refunded: 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300',
 }
 
-const currencyFormatter = new Intl.NumberFormat('en-IN', {
+const getCurrencyFormatter = (currency?: string) => new Intl.NumberFormat('en-US', {
   style: 'currency',
-  currency: 'INR',
+  currency: currency || 'INR',
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
 })
@@ -102,7 +103,7 @@ export default function OrdersView() {
       if (search) params.set('search', search)
       if (statusFilter !== 'all') params.set('status', statusFilter)
 
-      const res = await fetch(`/api/woocommerce/orders?${params}`)
+      const res = await apiGet(`/api/woocommerce/orders?${params}`)
       const data: OrdersResponse = await res.json()
       setOrders(data.orders)
       setTotal(data.total)
@@ -153,7 +154,7 @@ export default function OrdersView() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {loading ? <Skeleton className="h-8 w-24" /> : currencyFormatter.format(totalRevenue)}
+              {loading ? <Skeleton className="h-8 w-24" /> : getCurrencyFormatter().format(totalRevenue)}
             </div>
           </CardContent>
         </Card>
@@ -266,7 +267,7 @@ export default function OrdersView() {
                           ? items.slice(0, 2).map((i) => i.name).join(', ') + (items.length > 2 ? ` +${items.length - 2}` : '')
                           : '-'}
                       </TableCell>
-                      <TableCell className="font-medium">{currencyFormatter.format(order.total)}</TableCell>
+                      <TableCell className="font-medium">{getCurrencyFormatter().format(order.total)}</TableCell>
                       <TableCell className="hidden md:table-cell capitalize text-muted-foreground text-sm">
                         {order.paymentMethod.replace(/_/g, ' ') || 'N/A'}
                       </TableCell>
@@ -346,7 +347,7 @@ export default function OrdersView() {
                   </div>
                   <div>
                     <span className="text-muted-foreground">Total</span>
-                    <p className="text-lg font-bold">{currencyFormatter.format(selectedOrder.total)}</p>
+                    <p className="text-lg font-bold">{getCurrencyFormatter().format(selectedOrder.total)}</p>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Payment Method</span>
@@ -373,8 +374,8 @@ export default function OrdersView() {
                             {item.sku && <p className="text-xs text-muted-foreground">SKU: {item.sku}</p>}
                           </div>
                           <div className="text-right">
-                            <p>{currencyFormatter.format(item.price)} x {item.quantity}</p>
-                            <p className="font-medium">{currencyFormatter.format(item.total)}</p>
+                            <p>{getCurrencyFormatter().format(item.price)} x {item.quantity}</p>
+                            <p className="font-medium">{getCurrencyFormatter().format(item.total)}</p>
                           </div>
                         </div>
                       ))}

@@ -65,12 +65,12 @@ export function LoginPage() {
     // Clear any existing session first to prevent account mixing
     localStorage.removeItem('wc_dashboard_session')
 
-    // Set fresh session
+    // Set fresh session with userId and role
     localStorage.setItem(
       'wc_dashboard_session',
-      JSON.stringify({ isLoggedIn: true, name: user.name, email: user.email, id: user.id })
+      JSON.stringify({ isLoggedIn: true, name: user.name, email: user.email, id: user.id, role: user.role })
     )
-    setLoggedIn(true, user.name)
+    setLoggedIn(true, user.name, user.id, user.role)
 
     if (isNewUser) {
       toast.success(`Welcome, ${user.name}! Your account has been created.`, { duration: 5000 })

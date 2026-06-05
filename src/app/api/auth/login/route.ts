@@ -16,21 +16,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'OTP verification is required' }, { status: 400 })
     }
 
-    // ── Find the user first ──
+    // ── Find the user ──
     const user = await db.authUser.findUnique({ where: { email } })
 
     if (!user) {
       return NextResponse.json({ success: false, error: 'No account found with this email. Please create a new account.' }, { status: 404 })
     }
 
-    // ── Verify password BEFORE OTP (fail fast on wrong password) ──
+    // ── Verify password BEFORE OTP (fail fast) ──
     const isValid = await verifyPassword(password, user.password)
 
     if (!isValid) {
       return NextResponse.json({ success: false, error: 'Invalid password. Please try again.' }, { status: 401 })
     }
 
-    // ── Verify OTP (already verified by /api/auth/otp, double-check) ──
+    // ── Verify OTP ──
     const otpRecord = await db.otpRecord.findFirst({
       where: {
         email,
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (!otpRecord) {
-      // Check if there's an unverified one (auto-verify if frontend skipped)
+      // Check if there's an unverified one (auto-verify)
       const unverified = await db.otpRecord.findFirst({
         where: {
           email,
@@ -65,16 +65,31 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`✅ Login successful: ${email} (ID: ${user.id}, name: ${user.name})`)
+    console.log(`✅ Login successful: ${email} (ID: ${user.id}, role: ${user.role})`)
 
-    // ── Clean up used OTP records for this email ──
+    // ── Clean up used OTP records ──
     await db.otpRecord.deleteMany({ where: { email } })
 
     // ── Update last login timestamp ──
     await db.authUser.update({
       where: { id: user.id },
-      data: { updatedAt: new Date() },
+      data: { lastLoginAt: new Date() },
     })
+
+    // ── Seed UserSettings if this is the first login (migration safety) ──
+    const existingSettings = await db.userSettings.count({ where: { userId: user.id } })
+    if (existingSettings === 0) {
+      await db.userSettings.upsert({
+        where: { userId_key: { userId: user.id, key: 'currency' } },
+        update: {},
+        create: { userId: user.id, key: 'currency', value: 'INR' },
+      })
+      await db.userSettings.upsert({
+        where: { userId_key: { userId: user.id, key: 'currency_symbol' } },
+        update: {},
+        create: { userId: user.id, key: 'currency_symbol', value: '₹' },
+      })
+    }
 
     return NextResponse.json({
       success: true,
