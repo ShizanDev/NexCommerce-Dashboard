@@ -7,16 +7,30 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { email, password, otp } = body
 
+    // ── Validate required fields ──
     if (!email || !password) {
       return NextResponse.json({ success: false, error: 'Email and password are required' }, { status: 400 })
     }
 
-    // Verify OTP if required
     if (!otp) {
       return NextResponse.json({ success: false, error: 'OTP verification is required' }, { status: 400 })
     }
 
-    // Validate OTP (already verified by /api/auth/otp)
+    // ── Find the user first ──
+    const user = await db.authUser.findUnique({ where: { email } })
+
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'No account found with this email. Please create a new account.' }, { status: 404 })
+    }
+
+    // ── Verify password BEFORE OTP (fail fast on wrong password) ──
+    const isValid = await verifyPassword(password, user.password)
+
+    if (!isValid) {
+      return NextResponse.json({ success: false, error: 'Invalid password. Please try again.' }, { status: 401 })
+    }
+
+    // ── Verify OTP (already verified by /api/auth/otp, double-check) ──
     const otpRecord = await db.otpRecord.findFirst({
       where: {
         email,
@@ -29,22 +43,38 @@ export async function POST(request: NextRequest) {
     })
 
     if (!otpRecord) {
-      return NextResponse.json({ success: false, error: 'Invalid or expired OTP' }, { status: 401 })
+      // Check if there's an unverified one (auto-verify if frontend skipped)
+      const unverified = await db.otpRecord.findFirst({
+        where: {
+          email,
+          purpose: 'login',
+          otp,
+          verified: false,
+          expiresAt: { gte: new Date() },
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+
+      if (unverified) {
+        await db.otpRecord.update({
+          where: { id: unverified.id },
+          data: { verified: true },
+        })
+      } else {
+        return NextResponse.json({ success: false, error: 'Invalid or expired OTP. Please request a new one.' }, { status: 401 })
+      }
     }
 
-    // OTP already verified by /api/auth/otp — no need to mark again
+    console.log(`✅ Login successful: ${email} (ID: ${user.id}, name: ${user.name})`)
 
-    const user = await db.authUser.findUnique({ where: { email } })
+    // ── Clean up used OTP records for this email ──
+    await db.otpRecord.deleteMany({ where: { email } })
 
-    if (!user) {
-      return NextResponse.json({ success: false, error: 'Invalid credentials' }, { status: 401 })
-    }
-
-    const isValid = await verifyPassword(password, user.password)
-
-    if (!isValid) {
-      return NextResponse.json({ success: false, error: 'Invalid credentials' }, { status: 401 })
-    }
+    // ── Update last login timestamp ──
+    await db.authUser.update({
+      where: { id: user.id },
+      data: { updatedAt: new Date() },
+    })
 
     return NextResponse.json({
       success: true,

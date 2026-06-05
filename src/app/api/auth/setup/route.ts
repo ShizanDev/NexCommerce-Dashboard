@@ -7,6 +7,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { email, password, name, otp } = body
 
+    // ── Validate required fields ──
     if (!email || !password || !name) {
       return NextResponse.json({ success: false, error: 'Email, password, and name are required' }, { status: 400 })
     }
@@ -15,12 +16,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Password must be at least 6 characters' }, { status: 400 })
     }
 
-    // Verify OTP first
     if (!otp) {
       return NextResponse.json({ success: false, error: 'OTP verification is required' }, { status: 400 })
     }
 
-    // Look for a verified OTP (already verified by /api/auth/otp) or a valid unverified OTP
+    // ── CRITICAL: Check if user already exists BEFORE OTP check ──
+    // This prevents the scenario where an existing account is "logged into"
+    // instead of creating a new account
+    const existing = await db.authUser.findUnique({ where: { email } })
+    if (existing) {
+      console.warn(`⚠️ Signup attempted for existing email: ${email} (user: ${existing.id})`)
+      return NextResponse.json({
+        success: false,
+        error: 'An account with this email already exists. Please sign in instead.',
+        userExists: true,
+      }, { status: 409 })
+    }
+
+    // ── Verify OTP (already verified by /api/auth/otp, double-check) ──
     const otpRecord = await db.otpRecord.findFirst({
       where: {
         email,
@@ -33,18 +46,33 @@ export async function POST(request: NextRequest) {
     })
 
     if (!otpRecord) {
-      return NextResponse.json({ success: false, error: 'Invalid or expired OTP' }, { status: 401 })
+      // Check if there's an unverified one (frontend may have skipped verify step)
+      const unverified = await db.otpRecord.findFirst({
+        where: {
+          email,
+          purpose: 'signup',
+          otp,
+          verified: false,
+          expiresAt: { gte: new Date() },
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+
+      if (unverified) {
+        // Auto-verify it (frontend should have verified already)
+        await db.otpRecord.update({
+          where: { id: unverified.id },
+          data: { verified: true },
+        })
+        console.log(`📝 Auto-verified unverified OTP for signup: ${email}`)
+      } else {
+        return NextResponse.json({ success: false, error: 'Invalid or expired OTP. Please request a new one.' }, { status: 401 })
+      }
     }
 
-    // Check if user already exists
-    const existing = await db.authUser.findUnique({ where: { email } })
-    if (existing) {
-      return NextResponse.json({ success: false, error: 'An account with this email already exists' }, { status: 409 })
-    }
-
+    // ── Create the new user ──
     const hashedPassword = await hashPassword(password)
 
-    // Create admin user
     const user = await db.authUser.create({
       data: {
         email,
@@ -55,18 +83,21 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // OTP already verified by /api/auth/otp — no need to mark again
+    console.log(`👤 New user created: ${email} (ID: ${user.id}, name: ${name})`)
 
-    // Seed default currency settings
+    // ── Clean up ALL OTP records for this email (both signup and any lingering login OTPs) ──
+    await db.otpRecord.deleteMany({ where: { email } })
+
+    // ── Seed default currency settings (only if not already set) ──
     await db.systemSettings.upsert({
       where: { key: 'currency' },
-      update: { value: 'INR' },
+      update: {},
       create: { key: 'currency', value: 'INR' },
     })
 
     await db.systemSettings.upsert({
       where: { key: 'currency_symbol' },
-      update: { value: '₹' },
+      update: {},
       create: { key: 'currency_symbol', value: '₹' },
     })
 

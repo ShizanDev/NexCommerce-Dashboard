@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { testEmailConnection } from '@/lib/email'
+import { testEmailConnection, resetEmailClient } from '@/lib/email'
 
 // GET: Return all system settings
 export async function GET() {
@@ -13,7 +13,7 @@ export async function GET() {
 
     const wcConnected = !!(settingsMap.wc_store_url && settingsMap.wc_consumer_key && settingsMap.wc_consumer_secret)
     const lastSync = settingsMap.wc_last_sync || null
-    const emailConfigured = !!(settingsMap.resend_api_key)
+    const emailConfigured = !!(settingsMap.resend_api_key && settingsMap.resend_api_key.startsWith('re_'))
 
     return NextResponse.json({
       ...settingsMap,
@@ -37,12 +37,22 @@ export async function PUT(request: NextRequest) {
     }
 
     const entries = Object.entries(body) as [string, string][]
+    let emailKeyChanged = false
     for (const [key, value] of entries) {
       await db.systemSettings.upsert({
         where: { key },
         update: { value },
         create: { key, value },
       })
+      if (key === 'resend_api_key' || key === 'email_from') {
+        emailKeyChanged = true
+      }
+    }
+
+    // Reset email client if email settings were changed
+    if (emailKeyChanged) {
+      resetEmailClient()
+      console.log('📧 Email settings updated — client reset for new credentials')
     }
 
     return NextResponse.json({ success: true })
@@ -277,7 +287,11 @@ async function handleTestEmail(body: Record<string, string>) {
       create: { key: 'email_from', value: fromEmail },
     })
 
-    return NextResponse.json({ success: true, message: 'Test email sent successfully!' })
+    // Reset the email client so new credentials take effect immediately
+    resetEmailClient()
+    console.log('📧 Email settings saved and client reset')
+
+    return NextResponse.json({ success: true, message: 'Test email sent successfully! Email service is now active.' })
   } else {
     return NextResponse.json({ success: false, error: result.error || 'Failed to send test email' })
   }

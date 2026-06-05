@@ -1,24 +1,73 @@
 import { Resend } from 'resend'
 import { db } from '@/lib/db'
 
+// ─── Module-level state ───────────────────────────────────────────
 let resendInstance: Resend | null = null
+let cachedApiKey: string | null = null
 
-async function getResendClient(): Promise<Resend | null> {
-  // Check SystemSettings for API key first
+// ─── Public helpers ───────────────────────────────────────────────
+
+/**
+ * Call this whenever the API key changes (e.g. after saving settings)
+ * so the next OTP send uses the new credentials immediately.
+ */
+export function resetEmailClient(): void {
+  resendInstance = null
+  cachedApiKey = null
+  console.log('📧 Email client reset — will re-read config on next use')
+}
+
+/**
+ * Returns true if a Resend API key is currently stored (DB or env).
+ * Does NOT instantiate the SDK — just checks the key exists.
+ */
+export async function isEmailConfigured(): Promise<boolean> {
+  try {
+    const apiKey = await getApiKey()
+    return !!apiKey
+  } catch {
+    return false
+  }
+}
+
+// ─── Internal helpers ──────────────────────────────────────────────
+
+async function getApiKey(): Promise<string | null> {
   try {
     const setting = await db.systemSettings.findUnique({ where: { key: 'resend_api_key' } })
-    const apiKey = setting?.value || process.env.RESEND_API_KEY
+    return setting?.value || process.env.RESEND_API_KEY || null
+  } catch (err) {
+    console.error('❌ Failed to read email config from DB:', err instanceof Error ? err.message : err)
+    // Fallback to env only
+    return process.env.RESEND_API_KEY || null
+  }
+}
+
+async function getResendClient(): Promise<Resend | null> {
+  try {
+    const apiKey = await getApiKey()
 
     if (!apiKey) {
-      console.warn('⚠️ No Resend API key configured. Emails will not be sent.')
+      console.warn('⚠️ No Resend API key found (checked DB settings + env). Emails will not be sent.')
       return null
     }
 
+    // Detect API key change — recreate the client
+    if (cachedApiKey !== apiKey) {
+      console.log(`📧 API key ${cachedApiKey ? 'changed' : 'loaded'} — creating new Resend client`)
+      resendInstance = new Resend(apiKey)
+      cachedApiKey = apiKey
+    }
+
+    // First-time initialisation
     if (!resendInstance) {
       resendInstance = new Resend(apiKey)
+      cachedApiKey = apiKey
     }
+
     return resendInstance
-  } catch {
+  } catch (err) {
+    console.error('❌ getResendClient failed:', err instanceof Error ? err.message : err)
     return null
   }
 }
@@ -28,17 +77,23 @@ async function getFromEmail(): Promise<string> {
     const setting = await db.systemSettings.findUnique({ where: { key: 'email_from' } })
     return setting?.value || process.env.EMAIL_FROM || 'onboarding@resend.dev'
   } catch {
-    return 'onboarding@resend.dev'
+    return process.env.EMAIL_FROM || 'onboarding@resend.dev'
   }
 }
 
-export async function sendOtpEmail(to: string, otp: string, purpose: string): Promise<{ sent: boolean; error?: string }> {
+// ─── Core: Send OTP Email ──────────────────────────────────────────
+
+export async function sendOtpEmail(
+  to: string,
+  otp: string,
+  purpose: string
+): Promise<{ sent: boolean; error?: string; errorDetail?: string }> {
   try {
     const resend = await getResendClient()
 
     if (!resend) {
       console.log(`📧 [SANDBOX] OTP for ${to} (${purpose}): ${otp}`)
-      return { sent: false, error: 'Email service not configured' }
+      return { sent: false, error: 'Email service not configured', errorDetail: 'No Resend API key found in DB settings or environment variables.' }
     }
 
     const from = await getFromEmail()
@@ -59,14 +114,12 @@ export async function sendOtpEmail(to: string, otp: string, purpose: string): Pr
           <tr>
             <td align="center">
               <table width="480" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); overflow: hidden;">
-                <!-- Header -->
                 <tr>
                   <td style="background: linear-gradient(135deg, #059669, #0d9488); padding: 32px 40px; text-align: center;">
                     <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">WC Dashboard</h1>
                     <p style="margin: 8px 0 0; color: rgba(255,255,255,0.85); font-size: 14px;">WooCommerce Order Management</p>
                   </td>
                 </tr>
-                <!-- Body -->
                 <tr>
                   <td style="padding: 40px;">
                     <p style="margin: 0 0 8px; color: #334155; font-size: 16px; font-weight: 600;">
@@ -77,7 +130,6 @@ export async function sendOtpEmail(to: string, otp: string, purpose: string): Pr
                         ? 'Thank you for creating an account! Please use the verification code below to complete your registration.'
                         : 'We detected a login attempt to your account. Please verify your identity by entering the code below.'}
                     </p>
-                    <!-- OTP Code -->
                     <table width="100%" cellpadding="0" cellspacing="0">
                       <tr>
                         <td align="center" style="background-color: #f0fdf4; border: 2px dashed #059669; border-radius: 12px; padding: 24px;">
@@ -90,14 +142,13 @@ export async function sendOtpEmail(to: string, otp: string, purpose: string): Pr
                     </p>
                   </td>
                 </tr>
-                <!-- Footer -->
                 <tr>
                   <td style="background-color: #f8fafc; padding: 20px 40px; border-top: 1px solid #e2e8f0;">
                     <p style="margin: 0; color: #94a3b8; font-size: 12px; text-align: center;">
                       If you didn't request this code, you can safely ignore this email.
                     </p>
                     <p style="margin: 8px 0 0; color: #94a3b8; font-size: 12px; text-align: center;">
-                      © ${new Date().getFullYear()} WC Dashboard
+                      &copy; ${new Date().getFullYear()} WC Dashboard
                     </p>
                   </td>
                 </tr>
@@ -109,6 +160,8 @@ export async function sendOtpEmail(to: string, otp: string, purpose: string): Pr
       </html>
     `
 
+    console.log(`📧 Sending OTP email to ${to} from ${from} (purpose: ${purpose})...`)
+
     const { data, error } = await resend.emails.send({
       from: `WC Dashboard <${from}>`,
       to: [to],
@@ -117,24 +170,34 @@ export async function sendOtpEmail(to: string, otp: string, purpose: string): Pr
     })
 
     if (error) {
-      console.error('❌ Resend error:', error)
-      return { sent: false, error: error.message }
+      console.error('❌ Resend API error:', JSON.stringify(error, null, 2))
+      // Provide actionable error messages
+      const detail = getResendErrorDetail(error)
+      return { sent: false, error: error.message || 'Resend API error', errorDetail: detail }
     }
 
     console.log(`✅ OTP email sent to ${to} (ID: ${data?.id})`)
     return { sent: true }
-  } catch (error) {
-    console.error('❌ Email send error:', error)
-    const msg = error instanceof Error ? error.message : 'Unknown error'
-    return { sent: false, error: msg }
+  } catch (err) {
+    console.error('❌ Email send error:', err)
+    const msg = err instanceof Error ? err.message : 'Unknown error'
+    return { sent: false, error: msg, errorDetail: 'Unexpected error while sending email.' }
   }
 }
 
-export async function testEmailConnection(apiKey: string, fromEmail: string, toEmail: string): Promise<{ success: boolean; error?: string }> {
+// ─── Test email (used by Settings → Test button) ───────────────────
+
+export async function testEmailConnection(
+  apiKey: string,
+  fromEmail: string,
+  toEmail: string
+): Promise<{ success: boolean; error?: string }> {
   try {
     const resend = new Resend(apiKey)
 
-    const { error } = await resend.emails.send({
+    console.log(`📧 Sending test email to ${toEmail} from ${fromEmail}...`)
+
+    const { data, error } = await resend.emails.send({
       from: `WC Dashboard <${fromEmail}>`,
       to: [toEmail],
       subject: 'Test Email — WC Dashboard',
@@ -148,12 +211,37 @@ export async function testEmailConnection(apiKey: string, fromEmail: string, toE
     })
 
     if (error) {
-      return { success: false, error: error.message }
+      console.error('❌ Test email Resend error:', JSON.stringify(error, null, 2))
+      return { success: false, error: error.message || 'Resend API error' }
     }
 
+    console.log(`✅ Test email sent to ${toEmail} (ID: ${data?.id})`)
     return { success: true }
   } catch (error) {
+    console.error('❌ Test email error:', error)
     const msg = error instanceof Error ? error.message : 'Unknown error'
     return { success: false, error: msg }
   }
+}
+
+// ─── Resend error detail helper ────────────────────────────────────
+
+function getResendErrorDetail(error: { code?: string; message?: string; statusCode?: number; name?: string }): string {
+  if (!error) return 'No error details available.'
+
+  const code = error.code || error.name || ''
+  const msg = error.message || ''
+
+  if (code.includes('authentication') || code.includes('unauthorized') || msg.includes('API key'))
+    return 'The Resend API key is invalid or expired. Please check your API key in Settings.'
+  if (code.includes('domain') || msg.includes('domain_verification'))
+    return 'The sender domain is not verified in Resend. Use onboarding@resend.dev for testing, or verify your custom domain at resend.com/domains.'
+  if (code.includes('rate_limit') || msg.includes('rate'))
+    return 'Resend rate limit reached (100 emails/day on free tier). Please wait or upgrade your Resend plan.'
+  if (code.includes('not_found') || msg.includes('not found'))
+    return 'The recipient email address could not be found.'
+  if (msg.includes('quota'))
+    return 'Your Resend account has exceeded its email quota. Please check your Resend dashboard.'
+
+  return msg || code || 'Unknown Resend error'
 }

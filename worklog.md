@@ -93,3 +93,27 @@ Stage Summary:
 - Webhook events list matches actual WooCommerce topics
 - Email works without DNS changes using Resend's default domain
 - 4 files modified, all verifications passed
+
+---
+Task ID: 8
+Agent: Main Agent
+Task: Phase 1 QA — Fix OTP email delivery, signup duplication bug, email system automation
+
+Work Log:
+- Diagnosed root cause: Resend API key was NEVER saved to database. User entered key in form but test email failed before saving. Email service always fell back to sandbox mode.
+- Rewrote src/lib/email.ts: Fixed singleton caching bug (API key change detection + resetEmailClient), added isEmailConfigured(), replaced all silent catch blocks with proper error logging, added getResendErrorDetail() for actionable error messages
+- Rewrote src/app/api/auth/otp/route.ts: Better error messages for 409/404, OTP housekeeping (cleans expired), emailConfigured flag in response, handles already-verified OTP re-use
+- Rewrote src/app/api/auth/setup/route.ts: CRITICAL FIX — checks user existence BEFORE OTP verification (prevents account duplication), auto-verifies unverified OTPs, cleans up ALL OTP records after signup
+- Rewrote src/app/api/auth/login/route.ts: Verifies password BEFORE OTP (fail fast), auto-verifies unverified OTPs, cleans up used OTP records, updates last login timestamp
+- Rewrote src/components/admin/login-page.tsx: Fixed welcome message (new vs returning user), clears localStorage before setting new session, switchToSignup/switchToLogin reset all state, improved sandbox banner with error detail, typed error handling
+- Updated src/app/api/settings/route.ts: resetEmailClient() called after test email save and settings update, improved emailConfigured check (validates re_ prefix)
+- Updated .env with documented email configuration variables
+- QA verified with Agent Browser: signup works, duplication prevented (409), login works, settings show correct status
+
+Stage Summary:
+- 7 files rewritten/fixed with comprehensive improvements
+- Root cause identified and fixed: API key was never saved to DB
+- Email system fully automated: key change detection, client reset, proper error handling
+- Signup duplication bug fixed: user existence check before OTP
+- OTP cleanup: records cleaned up after successful auth
+- All QA tests passed with zero errors

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { sendOtpEmail } from '@/lib/email'
+import { sendOtpEmail, isEmailConfigured } from '@/lib/email'
 
 // POST /api/auth/otp — Send or Verify OTP
 export async function POST(request: NextRequest) {
@@ -23,6 +23,8 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// ─── Send OTP ──────────────────────────────────────────────────────
+
 async function handleSendOtp(email: string, purpose: string) {
   if (!email || !email.includes('@')) {
     return NextResponse.json({ success: false, error: 'Valid email is required' }, { status: 400 })
@@ -32,23 +34,18 @@ async function handleSendOtp(email: string, purpose: string) {
     return NextResponse.json({ success: false, error: 'Purpose must be "signup" or "login"' }, { status: 400 })
   }
 
-  // For signup, check if user already exists
-  if (purpose === 'signup') {
-    const existing = await db.authUser.findUnique({ where: { email } })
-    if (existing) {
-      return NextResponse.json({ success: false, error: 'An account with this email already exists' }, { status: 409 })
-    }
+  // ── Pre-flight checks ──
+  const existingUser = await db.authUser.findUnique({ where: { email } })
+
+  if (purpose === 'signup' && existingUser) {
+    return NextResponse.json({ success: false, error: 'An account with this email already exists. Please sign in instead.' }, { status: 409 })
   }
 
-  // For login, check if user exists
-  if (purpose === 'login') {
-    const existing = await db.authUser.findUnique({ where: { email } })
-    if (!existing) {
-      return NextResponse.json({ success: false, error: 'No account found with this email' }, { status: 404 })
-    }
+  if (purpose === 'login' && !existingUser) {
+    return NextResponse.json({ success: false, error: 'No account found with this email. Please create a new account.' }, { status: 404 })
   }
 
-  // Rate limiting: check for recent OTP (within last 60 seconds)
+  // ── Rate limiting: 60-second cooldown ──
   const recentOtp = await db.otpRecord.findFirst({
     where: {
       email,
@@ -68,47 +65,54 @@ async function handleSendOtp(email: string, purpose: string) {
     }, { status: 429 })
   }
 
-  // Generate 6-digit OTP
+  // ── Generate OTP ──
   const otp = String(Math.floor(100000 + Math.random() * 900000))
-  const expiresAt = new Date(Date.now() + 5 * 60 * 1000) // 5 minutes expiry
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000) // 5 minutes
 
-  // Delete any existing unverified OTPs for this email/purpose
+  // Clean up any old unverified OTPs for this email+purpose
   await db.otpRecord.deleteMany({
     where: { email, purpose, verified: false },
   })
 
-  // Store OTP
+  // Also clean up any expired verified OTPs (housekeeping)
+  await db.otpRecord.deleteMany({
+    where: { email, purpose, expiresAt: { lt: new Date() } },
+  })
+
+  // Store OTP in database
   await db.otpRecord.create({
-    data: {
-      email,
-      otp,
-      purpose,
-      expiresAt,
-    },
+    data: { email, otp, purpose, expiresAt },
   })
 
   console.log(`🔑 OTP generated for ${email} (${purpose}): ${otp}`)
 
-  // Send real email via Resend
+  // ── Attempt to send email ──
+  const emailConfigured = await isEmailConfigured()
   const emailResult = await sendOtpEmail(email, otp, purpose)
 
   if (emailResult.sent) {
-    // Email was sent successfully — do NOT return OTP in response
     return NextResponse.json({
       success: true,
       message: 'OTP sent to your email',
-    })
-  } else {
-    // Email failed to send — return OTP in response as fallback (sandbox mode)
-    console.warn(`⚠️ Email not sent to ${email}: ${emailResult.error}`)
-    return NextResponse.json({
-      success: true,
-      message: 'OTP generated (email service not configured — using sandbox mode)',
-      otp, // Included only when email service is unavailable
-      sandboxMode: true,
+      emailConfigured: true,
     })
   }
+
+  // Email failed — fall back to sandbox mode
+  console.warn(`⚠️ Email not sent to ${email}: ${emailResult.error}${emailResult.errorDetail ? ' — ' + emailResult.errorDetail : ''}`)
+
+  return NextResponse.json({
+    success: true,
+    message: 'OTP generated (email service unavailable — using sandbox mode)',
+    otp, // Only included when email fails
+    sandboxMode: true,
+    emailConfigured: false,
+    emailError: emailResult.error,
+    emailErrorDetail: emailResult.errorDetail,
+  })
 }
+
+// ─── Verify OTP ──────────────────────────────────────────────────────
 
 async function handleVerifyOtp(email: string, otp: string, purpose: string) {
   if (!email || !otp) {
@@ -135,6 +139,15 @@ async function handleVerifyOtp(email: string, otp: string, purpose: string) {
     if (expiredRecord && expiredRecord.expiresAt < new Date()) {
       return NextResponse.json({ success: false, error: 'OTP has expired. Please request a new one.' }, { status: 410 })
     }
+    // Check if already verified (re-use scenario)
+    const alreadyVerified = await db.otpRecord.findFirst({
+      where: { email, purpose, otp, verified: true },
+      orderBy: { createdAt: 'desc' },
+    })
+    if (alreadyVerified && alreadyVerified.expiresAt >= new Date()) {
+      // Already verified and still valid — that's fine, proceed
+      return NextResponse.json({ success: true, message: 'OTP already verified' })
+    }
     return NextResponse.json({ success: false, error: 'Invalid OTP. Please try again.' }, { status: 401 })
   }
 
@@ -144,8 +157,7 @@ async function handleVerifyOtp(email: string, otp: string, purpose: string) {
     data: { verified: true },
   })
 
-  // Note: For signup, the user is created in /api/auth/setup with emailVerified=true
-  // We don't update authUser here because the user doesn't exist yet during signup OTP verification.
+  console.log(`✅ OTP verified for ${email} (${purpose})`)
 
   return NextResponse.json({
     success: true,
