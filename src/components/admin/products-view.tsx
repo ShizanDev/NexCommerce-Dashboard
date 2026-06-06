@@ -9,9 +9,9 @@ import { Search, RefreshCw, Package, ImageOff } from 'lucide-react'
 import { apiGet } from '@/lib/api-fetch'
 import { toast } from 'sonner'
 
-const currencyFormatter = new Intl.NumberFormat('en-IN', {
+const getCurrencyFormatter = (currency?: string) => new Intl.NumberFormat('en-IN', {
   style: 'currency',
-  currency: 'INR',
+  currency: currency || 'INR',
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
 })
@@ -35,6 +35,7 @@ export default function ProductsView() {
   const [products, setProducts] = useState<WCProduct[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [currency, setCurrency] = useState('INR')
 
   const fetchProducts = useCallback(async () => {
     setLoading(true)
@@ -43,6 +44,7 @@ export default function ProductsView() {
       if (!res.ok) throw new Error('Failed to fetch')
       const data = await res.json()
       setProducts(data.products || [])
+      if (data.currency) setCurrency(data.currency)
     } catch {
       toast.error('Failed to fetch products')
     } finally {
@@ -139,11 +141,11 @@ export default function ProductsView() {
                   {product.sku && <p className="text-xs text-muted-foreground font-mono">SKU: {product.sku}</p>}
                   <div className="flex items-center gap-2 pt-1">
                     <span className="text-lg font-bold text-emerald-600">
-                      {currencyFormatter.format(parseFloat(product.price) || 0)}
+                      {getCurrencyFormatter(currency).format(parseFloat(product.price) || 0)}
                     </span>
                     {product.sale_price && parseFloat(product.sale_price) < parseFloat(product.regular_price) && (
                       <span className="text-sm text-muted-foreground line-through">
-                        {currencyFormatter.format(parseFloat(product.regular_price) || 0)}
+                        {getCurrencyFormatter(currency).format(parseFloat(product.regular_price) || 0)}
                       </span>
                     )}
                   </div>

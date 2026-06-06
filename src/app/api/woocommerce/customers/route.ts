@@ -14,6 +14,11 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1', 10)
     const limit = parseInt(searchParams.get('limit') || '20', 10)
 
+    // Get user's currency setting
+    const userSettings = await db.userSettings.findMany({ where: { userId } })
+    const currencySetting = userSettings.find(s => s.key === 'currency')
+    const currency = currencySetting?.value || 'INR'
+
     const where: Record<string, unknown> = { userId }
 
     if (search) {
@@ -58,6 +63,7 @@ export async function GET(request: NextRequest) {
       page,
       limit,
       totalPages: Math.ceil(total / limit),
+      currency,
     })
   } catch (error) {
     console.error('Customers GET error:', error)

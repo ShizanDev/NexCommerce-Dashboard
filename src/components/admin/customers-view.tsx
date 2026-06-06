@@ -43,6 +43,7 @@ export default function CustomersView() {
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [currency, setCurrency] = useState('INR')
 
   const fetchCustomers = useCallback(async () => {
     setLoading(true)
@@ -53,10 +54,12 @@ export default function CustomersView() {
       if (search) params.set('search', search)
 
       const res = await apiGet(`/api/woocommerce/customers?${params}`)
+      if (!res.ok) throw new Error('Failed to fetch customers')
       const data = await res.json()
       setCustomers(data.customers || [])
       setTotal(data.total)
       setTotalPages(data.totalPages)
+      if (data.currency) setCurrency(data.currency)
     } catch {
       toast.error('Failed to fetch customers')
     } finally {
@@ -145,7 +148,7 @@ export default function CustomersView() {
                       {[customer.city, customer.country].filter(Boolean).join(', ') || '-'}
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {getCurrencyFormatter().format(customer.totalSpent)}
+                      {getCurrencyFormatter(currency).format(customer.totalSpent)}
                     </TableCell>
                     <TableCell className="text-right">{customer.orderCount}</TableCell>
                   </TableRow>

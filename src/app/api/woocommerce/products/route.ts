@@ -17,9 +17,32 @@ export async function GET(request: NextRequest) {
     const storeUrl = settingsMap.wc_store_url
     const consumerKey = settingsMap.wc_consumer_key
     const consumerSecret = settingsMap.wc_consumer_secret
+    const currency = settingsMap.currency || 'INR'
 
     if (!storeUrl || !consumerKey || !consumerSecret) {
-      return NextResponse.json({ error: 'WooCommerce credentials not configured' }, { status: 400 })
+      // Fall back to local DB products
+      const localProducts = await db.product.findMany({
+        where: { userId },
+        orderBy: { name: 'asc' },
+      })
+      return NextResponse.json({
+        products: localProducts.map((p) => ({
+          id: p.wooId,
+          name: p.name,
+          sku: p.sku,
+          price: String(p.price),
+          regular_price: String(p.regularPrice),
+          sale_price: String(p.salePrice),
+          stock_status: p.stockStatus,
+          stock_quantity: p.stockQty,
+          status: p.status,
+          images: p.imageUrl ? [{ src: p.imageUrl, alt: p.name }] : [],
+          categories: p.category ? [{ name: p.category }] : [],
+          permalink: '',
+        })),
+        total: localProducts.length,
+        currency,
+      })
     }
 
     const cleanUrl = storeUrl.replace(/\/+$/, '')
@@ -103,7 +126,7 @@ export async function GET(request: NextRequest) {
       create: { userId, key: 'wc_last_sync', value: new Date().toISOString() },
     })
 
-    return NextResponse.json({ products: allProducts, total: allProducts.length })
+    return NextResponse.json({ products: allProducts, total: allProducts.length, currency })
   } catch (error: unknown) {
     console.error('Products fetch error:', error)
     const msg = error instanceof Error ? error.message : 'Unknown error'

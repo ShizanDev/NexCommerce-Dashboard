@@ -104,6 +104,7 @@ export default function OrdersView() {
       if (statusFilter !== 'all') params.set('status', statusFilter)
 
       const res = await apiGet(`/api/woocommerce/orders?${params}`)
+      if (!res.ok) throw new Error('Failed to fetch orders')
       const data: OrdersResponse = await res.json()
       setOrders(data.orders)
       setTotal(data.total)
@@ -154,7 +155,7 @@ export default function OrdersView() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {loading ? <Skeleton className="h-8 w-24" /> : getCurrencyFormatter().format(totalRevenue)}
+              {loading ? <Skeleton className="h-8 w-24" /> : getCurrencyFormatter(orders[0]?.currency).format(totalRevenue)}
             </div>
           </CardContent>
         </Card>
@@ -267,7 +268,7 @@ export default function OrdersView() {
                           ? items.slice(0, 2).map((i) => i.name).join(', ') + (items.length > 2 ? ` +${items.length - 2}` : '')
                           : '-'}
                       </TableCell>
-                      <TableCell className="font-medium">{getCurrencyFormatter().format(order.total)}</TableCell>
+                      <TableCell className="font-medium">{getCurrencyFormatter(order.currency).format(order.total)}</TableCell>
                       <TableCell className="hidden md:table-cell capitalize text-muted-foreground text-sm">
                         {order.paymentMethod.replace(/_/g, ' ') || 'N/A'}
                       </TableCell>
@@ -347,7 +348,7 @@ export default function OrdersView() {
                   </div>
                   <div>
                     <span className="text-muted-foreground">Total</span>
-                    <p className="text-lg font-bold">{getCurrencyFormatter().format(selectedOrder.total)}</p>
+                    <p className="text-lg font-bold">{getCurrencyFormatter(selectedOrder.currency).format(selectedOrder.total)}</p>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Payment Method</span>
@@ -359,7 +360,7 @@ export default function OrdersView() {
                   </div>
                   <div>
                     <span className="text-muted-foreground">Modified</span>
-                    <p>{format(new Date(selectedOrder.dateModified), 'dd MMM yyyy, HH:mm')}</p>
+                    <p>{selectedOrder.dateModified ? format(new Date(selectedOrder.dateModified), 'dd MMM yyyy, HH:mm') : '—'}</p>
                   </div>
                 </div>
 
@@ -374,8 +375,8 @@ export default function OrdersView() {
                             {item.sku && <p className="text-xs text-muted-foreground">SKU: {item.sku}</p>}
                           </div>
                           <div className="text-right">
-                            <p>{getCurrencyFormatter().format(item.price)} x {item.quantity}</p>
-                            <p className="font-medium">{getCurrencyFormatter().format(item.total)}</p>
+                            <p>{getCurrencyFormatter(selectedOrder.currency).format(item.price)} x {item.quantity}</p>
+                            <p className="font-medium">{getCurrencyFormatter(selectedOrder.currency).format(item.total)}</p>
                           </div>
                         </div>
                       ))}

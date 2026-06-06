@@ -119,13 +119,20 @@ export default function DashboardView() {
   // Dynamic currency formatter
   const currencyCode = data?.currency || 'INR'
   const currencySymbol = data?.currencySymbol || '₹'
-  const currencyFormatter = new Intl.NumberFormat('en-US', {
+  const currencyFormatter = new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: currencyCode,
     currencyDisplay: 'symbol',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   })
+
+  // Reset all state when user changes
+  useEffect(() => {
+    setData(null)
+    setLoading(true)
+    setError(null)
+  }, [userId])
 
   async function fetchDashboard() {
     setLoading(true)
@@ -141,13 +148,6 @@ export default function DashboardView() {
       setLoading(false)
     }
   }
-
-  // Reset all state when user changes
-  useEffect(() => {
-    setData(null)
-    setLoading(true)
-    setError(null)
-  }, [userId])
 
   useEffect(() => {
     if (userId) fetchDashboard()

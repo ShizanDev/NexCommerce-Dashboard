@@ -27,13 +27,15 @@ const navItems: { view: ActiveView; label: string; icon: React.ElementType; badg
 ]
 
 export function AppSidebar() {
-  const { activeView, setActiveView, userRole, userId } = useAppStore()
+  const { activeView, setActiveView, userRole } = useAppStore()
   const [wcConnected, setWcConnected] = useState(false)
   const [lastSync, setLastSync] = useState<string | null>(null)
 
   const mountedRef = useRef(false)
 
   useEffect(() => {
+    mountedRef.current = true
+
     const fetchSettings = async () => {
       try {
         const res = await apiGet('/api/settings')
@@ -48,7 +50,6 @@ export function AppSidebar() {
       }
     }
 
-    mountedRef.current = true
     fetchSettings()
     const interval = setInterval(fetchSettings, 30000)
     return () => {
