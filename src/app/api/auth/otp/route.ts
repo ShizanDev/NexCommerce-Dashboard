@@ -26,7 +26,8 @@ export async function POST(request: NextRequest) {
 // ─── Send OTP ──────────────────────────────────────────────────────
 
 async function handleSendOtp(email: string, purpose: string) {
-  if (!email || !email.includes('@')) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!email || !emailRegex.test(email)) {
     return NextResponse.json({ success: false, error: 'Valid email is required' }, { status: 400 })
   }
 
@@ -84,6 +85,7 @@ async function handleSendOtp(email: string, purpose: string) {
     data: { email, otp, purpose, expiresAt },
   })
 
+  // OTP logged for testing
   console.log(`🔑 OTP generated for ${email} (${purpose}): ${otp}`)
 
   // ── Attempt to send email ──

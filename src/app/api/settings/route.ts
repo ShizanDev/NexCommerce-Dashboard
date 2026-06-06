@@ -22,8 +22,11 @@ export async function GET(request: NextRequest) {
     // System-wide email status (from .env, not DB)
     const emailInfo = getEmailProviderInfo()
 
+    // Strip sensitive WooCommerce credentials from response
+    const { wc_consumer_key, wc_consumer_secret, ...safeSettings } = settingsMap
+
     return NextResponse.json({
-      ...settingsMap,
+      ...safeSettings,
       wcConnected: String(wcConnected),
       wc_last_sync: lastSync,
       emailConfigured: String(emailInfo.configured),

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useAppStore } from '@/stores/app-store'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -237,14 +238,12 @@ export default function SettingsView() {
   }
 
   // Get webhook URL with userId
+  const userId = useAppStore((s) => s.userId)
+
   function getWebhookUrl() {
-    try {
-      const session = JSON.parse(localStorage.getItem('wc_dashboard_session') || '{}')
-      const uid = session.id || ''
-      if (uid) {
-        return `https://woocommercemanager.space-z.ai/api/webhook/woocommerce?uid=${uid}`
-      }
-    } catch { /* ignore */ }
+    if (userId) {
+      return `https://woocommercemanager.space-z.ai/api/webhook/woocommerce?uid=${userId}`
+    }
     return 'https://woocommercemanager.space-z.ai/api/webhook/woocommerce'
   }
 

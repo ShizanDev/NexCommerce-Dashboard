@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Store, Mail, Lock, User, Eye, EyeOff, Loader2, ArrowLeft, ShieldCheck, Info, AlertCircle } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -17,7 +17,6 @@ export function LoginPage() {
   const [step, setStep] = useState<AuthStep>('choose')
   const [loading, setLoading] = useState(false)
   const { setLoggedIn } = useAppStore()
-  const otpRef = useRef<HTMLInputElement>(null)
 
   // Signup form
   const [signupName, setSignupName] = useState('')

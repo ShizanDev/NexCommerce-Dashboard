@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search') || ''
     const page = parseInt(searchParams.get('page') || '1', 10)
-    const limit = parseInt(searchParams.get('limit') || '20', 10)
+    const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10), 100)
 
     // Get user's currency setting
     const userSettings = await db.userSettings.findMany({ where: { userId } })

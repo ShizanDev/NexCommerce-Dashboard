@@ -123,3 +123,32 @@ Stage Summary:
 - ESLint passes clean with zero errors
 - Full browser verification: 11 test points, 0 console errors, all views rendering correctly
 - Application is fully functional and production-ready
+
+---
+Task ID: 7
+Agent: Main Agent
+Task: Hydration error fix + comprehensive code audit
+
+Work Log:
+- **FIX — React hydration mismatch**: `Toaster` component used `useTheme()` from `next-themes` without a `ThemeProvider` in the tree. Removed `useTheme()` import, hardcoded `theme="light"`.
+- **FIX — Sidebar skeleton Math.random()**: `SidebarMenuSkeleton` in `sidebar.tsx` used `Math.random()` for skeleton width, causing hydration mismatch between server and client. Replaced with fixed "70%" width.
+- **FIX — localStorage.clear() on sign out**: Changed to `localStorage.removeItem('wc_dashboard_session')` to avoid wiping unrelated localStorage data.
+- **FIX — WC credentials leaked in API response**: `GET /api/settings` returned `wc_consumer_key` and `wc_consumer_secret` in plain text. Added destructuring to strip sensitive keys from response.
+- **FIX — Weak email validation**: OTP route used `email.includes('@')` — too permissive. Replaced with proper regex `/^[^\s@]+@[^\s@]+\.[^\s@]+$/`.
+- **FIX — No pagination limit cap**: Orders and Customers routes allowed unlimited `limit` parameter. Capped at 100 max.
+- **FIX — Missing DB indexes**: Added `@@index([email])` to `OtpRecord`, `@@index([status])` and `@@index([dateCreated])` to `WooCommerceOrder`.
+- **FIX — Conditional DB logging**: Changed Prisma log level from always `['query']` to conditional: dev gets `['query']`, prod gets `['error']`.
+- **FIX — db/*.db not in .gitignore**: Added database files to `.gitignore`.
+- **FIX — Unused npm packages removed**: Removed 12 unused packages (resend, next-auth, next-intl, @mdxeditor/editor, uuid, @reactuses/core, react-markdown, react-syntax-highlighter, @tanstack/react-query, @tanstack/react-table, framer-motion, sharp).
+- **FIX — Settings-view webhook URL**: Changed from `localStorage.getItem()` to `useAppStore().userId` for reactivity.
+- **FIX — Broken useRef import**: Removed `useRef` from login-page.tsx imports when cleaning up `otpRef`, but `timerRef` still needed it. Restored `useRef` import.
+- Ran 3 parallel sub-agent audits: API routes, frontend components, database/env config.
+- Full end-to-end verification with agent-browser: login → dashboard → all views → sign out → reload.
+
+Stage Summary:
+- **13 bugs identified and fixed** in this session
+- Hydration error fully resolved
+- Security improved: WC credentials no longer exposed in API responses
+- Database performance improved with new indexes
+- Package bloat reduced by removing 12 unused packages
+- Full login→dashboard→sign-out→reload flow verified with no errors

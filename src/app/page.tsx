@@ -31,7 +31,6 @@ export default function Home() {
     if (hydrated.current) return
     hydrated.current = true
 
-    // Check localStorage for session
     const saved = localStorage.getItem('wc_dashboard_session')
     if (saved) {
       try {
@@ -40,17 +39,15 @@ export default function Home() {
           setLoggedIn(true, session.name, session.id, session.role)
         }
       } catch {
-        // ignore parse errors
+        // ignore
       }
     }
 
-    // Defer setMounted to avoid cascading render warning
     queueMicrotask(() => setMounted(true))
   }, [setLoggedIn])
 
   if (!mounted) return null
 
-  // Login gate
   if (!isLoggedIn) {
     return (
       <>
@@ -82,8 +79,7 @@ export default function Home() {
   }
 
   function handleSignOut() {
-    // Clear ALL localStorage to prevent data leaks
-    localStorage.clear()
+    localStorage.removeItem('wc_dashboard_session')
     resetAll()
   }
 
