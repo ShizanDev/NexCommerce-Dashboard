@@ -69,3 +69,10 @@ export function apiPut(url: string, body?: unknown): Promise<Response> {
     body: body ? JSON.stringify(body) : undefined,
   })
 }
+
+/**
+ * Shorthand for DELETE requests
+ */
+export function apiDelete(url: string): Promise<Response> {
+  return apiFetch(url, { method: 'DELETE' })
+}

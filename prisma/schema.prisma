@@ -15,6 +15,7 @@ model AuthUser {
   password      String
   name          String    @default("")
   role          String    @default("admin") // "admin" | "super_admin"
+  status        String    @default("active") // "active" | "suspended" | "deactivated"
   emailVerified Boolean   @default(false)
   lastLoginAt   DateTime?
   createdAt     DateTime  @default(now())
@@ -117,6 +118,24 @@ model SystemSettings {
   value String @default("")
 }
 
+// ============ AUDIT LOG ============
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String   @default("")
+  userName   String   @default("")
+  userEmail  String   @default("")
+  action     String   // "user.create" | "user.role_change" | "user.suspend" | "user.delete" | "user.login" | "settings.update" | "system.backup" | etc.
+  target     String   @default("") // what was affected (user email, setting key, etc.)
+  details    String   @default("") // JSON or text details
+  ipAddress   String   @default("")
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
 // ============ USER SETTINGS (per-user: WC, currency, notifications) ============
 
 model UserSettings {
@@ -128,5 +147,21 @@ model UserSettings {
   updatedAt DateTime @updatedAt
 
   @@unique([userId, key])
+  @@index([userId])
+}
+
+// ============ PLATFORM ACTIVITY (real-time events) ============
+
+model PlatformEvent {
+  id        String   @id @default(cuid())
+  type      String   // "signup" | "login" | "wc_connected" | "wc_synced" | "order_placed" | "settings_changed"
+  title     String
+  message   String   @default("")
+  userId    String   @default("")
+  metadata  String   @default("{}") // JSON
+  createdAt DateTime @default(now())
+
+  @@index([type])
+  @@index([createdAt])
   @@index([userId])
 }

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getUserIdFromRequest, isSuperAdmin } from '@/lib/api-auth'
+import { statSync } from 'fs'
+import path from 'path'
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,6 +28,8 @@ export async function GET(request: NextRequest) {
         emailVerified: true,
         lastLoginAt: true,
         createdAt: true,
+        status: true,
+        updatedAt: true,
       },
     })
 
@@ -65,6 +69,9 @@ export async function GET(request: NextRequest) {
     const paidOrders = allOrders.filter((o) => o.paymentStatus === 'paid')
     const totalRevenue = paidOrders.reduce((sum, o) => sum + o.totalAmount, 0)
 
+    // ── NEW: avgOrderValue ──
+    const avgOrderValue = totalOrders > 0 ? Math.round((totalRevenue / totalOrders) * 100) / 100 : 0
+
     // Daily signups chart (last 30 days)
     const dailySignups: { date: string; count: number }[] = []
     for (let i = 29; i >= 0; i--) {
@@ -75,6 +82,18 @@ export async function GET(request: NextRequest) {
         date: dayStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         count,
       })
+    }
+
+    // ── NEW: platformGrowthPercent ──
+    // Compare last 7 days signups vs previous 7 days
+    const twoWeeksAgo = new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000)
+    const last7DaysSignups = allUsers.filter((u) => u.createdAt >= weekAgo && u.createdAt < today).length
+    const prev7DaysSignups = allUsers.filter((u) => u.createdAt >= twoWeeksAgo && u.createdAt < weekAgo).length
+    let platformGrowthPercent = 0
+    if (prev7DaysSignups > 0) {
+      platformGrowthPercent = Math.round(((last7DaysSignups - prev7DaysSignups) / prev7DaysSignups) * 100)
+    } else if (last7DaysSignups > 0) {
+      platformGrowthPercent = 100 // 100% growth when going from 0 to N
     }
 
     // Per-user breakdown
@@ -92,8 +111,11 @@ export async function GET(request: NextRequest) {
         email: user.email,
         name: user.name,
         role: user.role,
+        status: user.status,
+        emailVerified: user.emailVerified,
         lastLoginAt: user.lastLoginAt?.toISOString() || null,
         createdAt: user.createdAt.toISOString(),
+        updatedAt: user.updatedAt.toISOString(),
         wcConnected,
         orderCount: userOrders.length,
         customerCount: userCustomers.length,
@@ -101,6 +123,23 @@ export async function GET(request: NextRequest) {
         revenue: Math.round(userRevenue * 100) / 100,
       }
     })
+
+    // ── NEW: recentActivity (latest 10 PlatformEvents) ──
+    const recentActivity = await db.platformEvent.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    })
+
+    // ── NEW: dbSize ──
+    let dbSize = 0
+    try {
+      const dbPath = path.join(process.cwd(), 'db', 'custom.db')
+      const stats = statSync(dbPath)
+      dbSize = stats.size
+    } catch {
+      // If we can't read the file, return 0
+      dbSize = 0
+    }
 
     // Email status
     const emailInfo = await import('@/lib/email').then((m) => m.getEmailProviderInfo())
@@ -121,6 +160,12 @@ export async function GET(request: NextRequest) {
       totalCustomers,
       totalProducts,
       totalRevenue: Math.round(totalRevenue * 100) / 100,
+
+      // NEW fields
+      avgOrderValue,
+      platformGrowthPercent,
+      recentActivity,
+      dbSize,
 
       // Charts
       dailySignups,

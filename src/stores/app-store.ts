@@ -1,6 +1,17 @@
 import { create } from 'zustand'
 
-export type ActiveView = 'dashboard' | 'orders' | 'products' | 'customers' | 'settings' | 'super-admin'
+export type ActiveView =
+  | 'dashboard'
+  | 'orders'
+  | 'products'
+  | 'customers'
+  | 'settings'
+  | 'super-admin'
+  | 'sa-users'
+  | 'sa-analytics'
+  | 'sa-audit'
+  | 'sa-health'
+  | 'sa-settings'
 
 interface AppState {
   activeView: ActiveView
