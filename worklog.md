@@ -565,3 +565,41 @@ Stage Summary:
 - All views use theme tokens — no hardcoded dark: variants remaining on dashboard pages
 - Login page fully theme-aware with consistent styling
 - WCAG AAA contrast compliance in both modes
+
+---
+Task ID: 8
+Agent: Main Agent
+Task: Enhance Theme Toggle to Switch Button + FOUC Prevention + Smoothness Audit
+
+Work Log:
+- **Enhanced theme-toggle.tsx** — Redesigned as a premium switch button:
+  - Larger dimensions: h-7 w-[52px] (from h-6 w-11) for better visibility
+  - Thumb now contains embedded icon (Sun/Moon) inside the circle
+  - Background shows faded hint icon on opposite side
+  - Dark mode: primary-colored track with white thumb containing Moon icon
+  - Light mode: muted track with white thumb containing amber Sun icon
+  - Smooth 0.2s ease-in-out transition on all properties (transform, background, opacity)
+  - Hydration-safe placeholder with matching dimensions
+  - Proper role="switch" and aria-checked for accessibility
+- **Added FOUC prevention** — Inline script in layout.tsx:
+  - Reads localStorage key "nexcommerce-theme" before first paint
+  - Applies "dark" class to <html> element synchronously
+  - Prevents flash of light background when user has dark mode preference
+- **Thorough color theme audit** across ALL 15+ components:
+  - Reviewed every admin component for hardcoded colors vs theme tokens
+  - Fixed products-view.tsx: text-emerald-600 → text-emerald-600 dark:text-emerald-400 (price display)
+  - Confirmed all other components properly use CSS variable tokens or intentional semantic colors
+  - Status badges all have proper dark: variants
+  - Chart colors are intentionally fixed (not theme-dependent)
+  - Icon backgrounds (bg-emerald-600, etc.) are intentional design indicators
+  - All surfaces use bg-background, bg-card, bg-muted tokens
+  - All text uses text-foreground, text-muted-foreground, text-primary tokens
+  - All borders use border-border token
+- **Verified**: ESLint passes clean (0 errors)
+- **Verified**: Dev server starts successfully
+
+Stage Summary:
+- Theme toggle is now a polished, premium switch button with embedded sun/moon icons
+- Dark mode no longer flashes on page load (FOUC prevented)
+- Color theme is consistent across the entire application — every component audited
+- All hardcoded colors are intentional semantic/functional colors with proper dark variants

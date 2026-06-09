@@ -140,7 +140,7 @@ export default function ProductsView() {
                   {category && <p className="text-xs text-muted-foreground">{category}</p>}
                   {product.sku && <p className="text-xs text-muted-foreground font-mono">SKU: {product.sku}</p>}
                   <div className="flex items-center gap-2 pt-1">
-                    <span className="text-lg font-bold text-emerald-600">
+                    <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
                       {getCurrencyFormatter(currency).format(parseFloat(product.price) || 0)}
                     </span>
                     {product.sale_price && parseFloat(product.sale_price) < parseFloat(product.regular_price) && (

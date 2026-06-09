@@ -24,20 +24,20 @@ export function ThemeToggle({ className }: { className?: string }) {
     setTheme(isDark ? 'light' : 'dark')
   }
 
-  // Hydration-safe placeholder
+  // Hydration-safe placeholder — same dimensions to prevent layout shift
   if (!mounted) {
     return (
-      <button
+      <div
         className={cn(
-          'relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-colors duration-200 ease-in-out',
+          'relative inline-flex h-7 w-[52px] shrink-0 cursor-pointer items-center rounded-full',
           'bg-muted',
           className
         )}
         aria-label="Toggle theme"
       >
         <span className="sr-only">Toggle theme</span>
-        <span className="pointer-events-none block h-5 w-5 rounded-full bg-background shadow-sm ring-0 transition-transform duration-200" />
-      </button>
+        <span className="pointer-events-none block h-[22px] w-[22px] rounded-full bg-background shadow-sm ml-0.5" />
+      </div>
     )
   }
 
@@ -48,44 +48,47 @@ export function ThemeToggle({ className }: { className?: string }) {
       aria-checked={isDark}
       onClick={toggleTheme}
       className={cn(
-        'relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full p-0.5',
-        'transition-colors duration-200 ease-in-out',
+        'relative inline-flex h-7 w-[52px] shrink-0 cursor-pointer items-center rounded-full',
+        'transition-all duration-200 ease-in-out',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
         isDark
-          ? 'bg-primary'
-          : 'bg-muted hover:bg-muted/80',
+          ? 'bg-primary shadow-sm shadow-primary/25'
+          : 'bg-muted-foreground/20 hover:bg-muted-foreground/30',
         className
       )}
       aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
       title={`Switch to ${isDark ? 'light' : 'dark'} mode`}
     >
-      <span className="sr-only">Toggle theme</span>
+      <span className="sr-only">Switch to {isDark ? 'light' : 'dark'} mode</span>
 
-      {/* Sun icon — visible in light mode (left side) */}
-      <Sun
-        className={cn(
-          'pointer-events-none absolute left-1 h-3.5 w-3.5 transition-opacity duration-200',
-          isDark ? 'opacity-0' : 'opacity-60'
-        )}
-      />
+      {/* Switch Track — subtle inner highlight */}
+      <span className="absolute inset-0 rounded-full opacity-100 pointer-events-none" />
 
-      {/* Moon icon — visible in dark mode (right side) */}
-      <Moon
-        className={cn(
-          'pointer-events-none absolute right-1 h-3.5 w-3.5 transition-opacity duration-200',
-          isDark ? 'opacity-80' : 'opacity-0'
-        )}
-      />
-
-      {/* Thumb */}
+      {/* Thumb with embedded icon */}
       <span
         className={cn(
-          'pointer-events-none block h-5 w-5 rounded-full',
-          'bg-background shadow-sm ring-0',
-          'transition-transform duration-200 ease-in-out',
-          isDark ? 'translate-x-5' : 'translate-x-0'
+          'pointer-events-none relative flex items-center justify-center',
+          'rounded-full shadow-md',
+          'transition-all duration-200 ease-in-out',
+          'h-[22px] w-[22px]',
+          isDark
+            ? 'translate-x-[26px] bg-primary-foreground'
+            : 'translate-x-[3px] bg-background',
         )}
-      />
+      >
+        {isDark ? (
+          <Moon className="h-3 w-3 text-primary" strokeWidth={2.5} />
+        ) : (
+          <Sun className="h-3 w-3 text-amber-500" strokeWidth={2.5} />
+        )}
+      </span>
+
+      {/* Background hint icon (opposite side, faded) */}
+      {isDark ? (
+        <Sun className="pointer-events-none absolute left-1.5 h-3 w-3 text-primary-foreground/30" />
+      ) : (
+        <Moon className="pointer-events-none absolute right-1.5 h-3 w-3 text-muted-foreground/50" />
+      )}
     </button>
   )
 }
