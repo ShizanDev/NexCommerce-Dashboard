@@ -6,8 +6,11 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] })
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "WC Dashboard — WooCommerce Order Management",
-  description: "Manage your WooCommerce store orders, customers, and revenue in one place.",
+  title: "NexCommerce — Unified Commerce Operations Platform",
+  description: "Manage your store orders, products, customers and revenue in one place.",
+  icons: {
+    icon: "/favicon.svg",
+  },
 }
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

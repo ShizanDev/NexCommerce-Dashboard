@@ -194,3 +194,25 @@ Stage Summary:
 - Platform settings with registration toggles and danger zone
 - Dual-mode sidebar: Super Admin sees platform management, Regular Admin sees store management
 - All code passes ESLint, compiles successfully, serves HTTP 200
+
+---
+Task ID: logo-favicon-update
+Agent: Main Agent
+Task: Update logo and favicon with user's custom branding + fix missing illustration
+
+Work Log:
+- Copied user's Logo DC.svg → public/logo.svg and Favicon.svg → public/favicon.svg
+- Copied illustration images back from upload folder (were deleted from public):
+  - "ChatGPT Image without BG.png" → public/login-illustration-white.png
+  - "ChatGPT Image with BG.png" → public/login-illustration-blue.png
+- Updated sidebar.tsx: Replaced Store icon with <img src="/logo.svg">, ring-2 border, brand name "NexCommerce"
+- Updated login-page.tsx: Replaced Store icon with <img src="/logo.svg">, removed unused imports
+- Updated layout.tsx: Added favicon.svg reference, updated title to "NexCommerce — Unified Commerce Operations Platform"
+- Fixed right side image: changed from next/image Image component to plain <img> tag for reliability
+- ESLint passes clean
+- Browser verified: Logo visible on login page and sidebar, illustration visible on right panel
+
+Stage Summary:
+- User's custom logo now on login page, sidebar, and favicon
+- Right side illustration restored — was missing because files were deleted from public/
+- Login flow tested end-to-end: form → OTP → dashboard ✅

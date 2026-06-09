@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   Mail, Lock, User, Eye, EyeOff, Loader2, ArrowLeft, ShieldCheck,
-  AlertCircle, Store, CheckCircle2, XCircle, Info,
+  AlertCircle, CheckCircle2, XCircle, Info,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from '@/components/ui/input-otp'
 import { useAppStore } from '@/stores/app-store'
-import Image from 'next/image'
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -386,8 +385,8 @@ export function LoginPage() {
 
             {/* Logo */}
             <div className="flex items-center gap-2.5 mb-10">
-              <div className="h-9 w-9 rounded-lg bg-[#2563EB] flex items-center justify-center">
-                <Store className="h-5 w-5 text-white" />
+              <div className="h-9 w-9 rounded-lg overflow-hidden">
+                <img src="/logo.svg" alt="NexCommerce" className="h-full w-full object-contain" />
               </div>
               <span className="text-lg font-semibold text-gray-900 dark:text-gray-100">NexCommerce</span>
             </div>
@@ -642,13 +641,10 @@ export function LoginPage() {
 
             {/* Transparent illustration below */}
             <div className="w-full max-w-[440px]">
-              <Image
+              <img
                 src="/login-illustration-white.png"
                 alt="NexCommerce"
-                width={600}
-                height={480}
                 className="w-full h-auto"
-                priority
               />
             </div>
           </div>

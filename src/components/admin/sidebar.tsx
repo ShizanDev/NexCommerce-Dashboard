@@ -14,7 +14,6 @@ import {
   SidebarGroupLabel,
 } from '@/components/ui/sidebar'
 import {
-  Store,
   LayoutDashboard,
   ShoppingCart,
   Package,
@@ -117,15 +116,15 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" className="hover:bg-transparent">
-              <div className={`flex aspect-square size-8 items-center justify-center rounded-lg text-white shadow-sm ${isSuperAdmin ? 'bg-amber-600' : 'bg-emerald-600'}`}>
-                <Store className="size-4" />
+              <div className={`flex aspect-square size-8 items-center justify-center rounded-lg overflow-hidden shadow-sm ${isSuperAdmin ? 'ring-2 ring-amber-600' : 'ring-2 ring-blue-600'}`}>
+                <img src="/logo.svg" alt="NexCommerce" className="h-full w-full object-contain" />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-bold">
-                  {isSuperAdmin ? 'Admin Panel' : 'WC Dashboard'}
+                  NexCommerce
                 </span>
                 <span className="truncate text-xs text-muted-foreground">
-                  {isSuperAdmin ? 'Platform Control' : 'WooCommerce'}
+                  {isSuperAdmin ? 'Platform Control' : 'Commerce Hub'}
                 </span>
               </div>
             </SidebarMenuButton>
