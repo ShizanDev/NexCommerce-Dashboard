@@ -113,7 +113,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       {/* ─── Header / Logo ─────────────────────────────── */}
-      <SidebarHeader className="border-b h-14 gap-0 px-3 justify-center group-data-[collapsible=icon]:px-1.5 group-data-[collapsible=icon]:justify-center">
+      <SidebarHeader className="border-b h-14 gap-0 px-2 justify-center group-data-[collapsible=icon]:px-1.5 group-data-[collapsible=icon]:justify-center">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" className="hover:bg-transparent">
@@ -144,7 +144,7 @@ export function AppSidebar() {
             {['PLATFORM', 'GOVERNANCE'].map((group) => {
               const items = saNavItems.filter((i) => i.group === group)
               return (
-                <SidebarGroup key={group}>
+                <SidebarGroup key={group} className="px-0 group-data-[collapsible=icon]:px-0">
                   <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 group-data-[collapsible=icon]:hidden">
                     {group}
                   </SidebarGroupLabel>

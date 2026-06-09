@@ -425,3 +425,30 @@ Stage Summary:
 - Password strength indicator with 4 levels and colored progress bar
 - Inline validation for password match on reset step
 - All existing login/signup flows preserved unchanged
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: Align sidebar logo container and Platform overview borders (horizontal padding alignment)
+
+Work Log:
+- Analyzed sidebar padding chain to identify misalignment:
+  - Logo (SidebarHeader): px-3 (12px) + SidebarMenuButton p-2 (8px) = 20px from edge
+  - PLATFORM label: SidebarContent px-2 (8px) + SidebarGroup p-2 (8px) + SidebarGroupLabel px-2 (8px) = 24px from edge
+  - Nav items: SidebarContent px-2 (8px) + SidebarGroup p-2 (8px) + SidebarMenuButton p-2 (8px) = 24px from edge
+  - 4px mismatch between logo (20px) and content items (24px)
+- Fixed SidebarHeader: changed `px-3` → `px-2` to match SidebarContent's horizontal padding
+- Fixed SidebarGroup: added `className="px-0 group-data-[collapsible=icon]:px-0"` to remove redundant horizontal padding (SidebarContent already provides px-2)
+- All elements now align at 16px from sidebar edge:
+  - Logo: px-2 + p-2 = 16px
+  - PLATFORM label: px-2 + px-0 + px-2 = 16px
+  - Nav items: px-2 + px-0 + p-2 = 16px
+  - Footer items: px-2 = 16px
+- ESLint passes clean with no errors
+- Server compiles successfully
+
+Stage Summary:
+- Sidebar logo container and Platform overview section now share identical horizontal alignment
+- All sidebar content (logo, group labels, nav items, footer) starts at the same left edge
+- Border lines between header and content sections are visually aligned
+- Collapsed state properly handles px-0 override
