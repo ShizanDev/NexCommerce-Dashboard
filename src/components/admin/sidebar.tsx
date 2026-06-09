@@ -112,7 +112,8 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b px-4 py-3">
+      {/* ─── Header / Logo ─────────────────────────────── */}
+      <SidebarHeader className="border-b px-3 py-2.5 group-data-[collapsible=icon]:px-1.5 group-data-[collapsible=icon]:py-2 group-data-[collapsible=icon]:justify-center">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" className="hover:bg-transparent">
@@ -122,14 +123,15 @@ export function AppSidebar() {
               </div>
               {/* Favicon icon: visible when collapsed, hidden when expanded */}
               <div className="flex items-center justify-center overflow-hidden group-data-[collapsible=icon]:flex hidden">
-                <img src="/favicon-icon.png" alt="NexCommerce" className="h-8 w-8 object-contain rounded-md" />
+                <img src="/favicon-icon.png" alt="NexCommerce" className="h-7 w-7 object-contain rounded-md" />
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent className="px-3 py-2">
+      {/* ─── Navigation Content ────────────────────────── */}
+      <SidebarContent className="px-3 py-2 group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:py-1">
         {isSuperAdmin ? (
           // ─── SUPER ADMIN SIDEBAR ──────────────────────────────
           <>
@@ -182,14 +184,15 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="border-t px-4 py-3 space-y-2">
+      {/* ─── Footer ─────────────────────────────────────── */}
+      <SidebarFooter className="border-t px-3 py-2.5 space-y-1.5 group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:py-2 group-data-[collapsible=icon]:items-center">
         {/* WC Connection Status (only for regular admin) */}
         {!isSuperAdmin && (
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-2 text-xs justify-center group-data-[collapsible=icon]:justify-center">
             {wcConnected ? (
               <>
                 <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                  <Wifi className="size-3" />
+                  <Wifi className="size-3.5 shrink-0" />
                   <span className="group-data-[collapsible=icon]:hidden font-medium">Connected</span>
                 </div>
                 {lastSync && (
@@ -201,7 +204,7 @@ export function AppSidebar() {
               </>
             ) : (
               <span className="flex items-center gap-1 text-amber-500">
-                <WifiOff className="size-3" />
+                <WifiOff className="size-3.5 shrink-0" />
                 <span className="group-data-[collapsible=icon]:hidden">Not Connected</span>
               </span>
             )}
@@ -210,17 +213,17 @@ export function AppSidebar() {
 
         {/* Super Admin Footer Badge */}
         {isSuperAdmin && (
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-2 text-xs justify-center group-data-[collapsible=icon]:justify-center">
             <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
-              <Shield className="size-3" />
+              <Shield className="size-3.5 shrink-0" />
               <span className="group-data-[collapsible=icon]:hidden font-medium">Super Admin</span>
             </div>
           </div>
         )}
 
-        <div className="flex items-center text-xs text-muted-foreground">
-          <Activity className="mr-1.5 size-3" />
-          <span className="font-mono">v2.4.0</span>
+        <div className="flex items-center text-xs text-muted-foreground justify-center group-data-[collapsible=icon]:justify-center">
+          <Activity className="size-3 shrink-0" />
+          <span className="font-mono group-data-[collapsible=icon]:hidden ml-1.5">v2.4.0</span>
         </div>
       </SidebarFooter>
 

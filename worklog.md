@@ -241,3 +241,39 @@ Stage Summary:
 - Both admin and super admin share same sidebar component, so behavior is identical
 - Right-side illustration is now showing on login page
 - All changes verified via agent-browser
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Fix sidebar collapsed state - icons clipping, content overflow, padding issues
+
+Work Log:
+- Analyzed user's reference design mockup showing ideal collapsed sidebar
+- Analyzed current broken collapsed sidebar: icons clipped, content overflow, improper padding
+- Root causes identified:
+  1. SIDEBAR_WIDTH_ICON = "3rem" (48px) too narrow with current padding
+  2. SidebarHeader had px-4 py-3 (32px horizontal padding leaves only 16px for content)
+  3. SidebarFooter had same issue, causing version text to overflow
+  4. SidebarMenuButton size="lg" had height conflict in collapsed state
+  5. SidebarContent and SidebarGroup padding didn't adapt to collapsed state
+- Fixed ui/sidebar.tsx:
+  - SIDEBAR_WIDTH_ICON: "3rem" → "3.5rem" (56px) for more breathing room
+  - SidebarHeader: Added group-data-[collapsible=icon]:p-1.5
+  - SidebarFooter: Added group-data-[collapsible=icon]:p-1.5
+  - SidebarContent: Added group-data-[collapsible=icon]:px-0
+  - SidebarGroup: Added group-data-[collapsible=icon]:p-1
+  - SidebarMenuButton lg variant: Changed to group-data-[collapsible=icon]:size-9! for proper sizing
+- Fixed admin/sidebar.tsx:
+  - Header: Added group-data-[collapsible=icon] responsive padding classes
+  - Content: Added collapsed padding override
+  - Footer: Centered all items with justify-center, proper collapsed padding
+  - Favicon: Reduced to h-7 w-7 to fit comfortably
+  - Footer icons: Made shrink-0, centered in collapsed state
+  - Version text: Hidden in collapsed state with group-data-[collapsible=icon]:hidden
+- Verified with agent browser: collapsed sidebar now clean, no clipping, proper spacing
+- Verified expanded sidebar: still looks correct with full logo and labels
+
+Stage Summary:
+- Collapsed sidebar: All icons visible, centered, no clipping or overflow
+- Expanded sidebar: Full logo, labels, sections all work correctly
+- Both admin and super admin sidebars share same fixed component
