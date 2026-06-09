@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react'
 import {
   Mail, Lock, User, Eye, EyeOff, Loader2, ArrowLeft, ShieldCheck,
   AlertCircle, CheckCircle2, XCircle, Info,
-  ShoppingCart, Package, BarChart3, ShieldCheck as ShieldIcon,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -379,7 +378,7 @@ export function LoginPage() {
       <ThemedToast toasts={toasts} onDismiss={dismissToast} />
 
       {/* ═══════ LEFT: Form Panel ═══════ */}
-      <div className="w-full lg:w-1/2 flex flex-col bg-white dark:bg-slate-950 relative">
+      <div className="w-full lg:w-1/2 flex flex-col bg-white dark:bg-slate-950">
 
         {/* Logo pinned at top */}
         <div className="flex-shrink-0 flex justify-center px-6 sm:px-10 lg:px-16 pt-6 sm:pt-8 lg:pt-8 pb-2">
@@ -389,7 +388,7 @@ export function LoginPage() {
         </div>
 
         {/* Form centered in remaining space */}
-        <div className="flex-1 flex flex-col items-center justify-center px-6 sm:px-10 lg:px-16 py-6 sm:py-8">
+        <div className="flex-1 flex flex-col items-center justify-center px-6 sm:px-10 lg:px-16 overflow-y-auto">
         <div className="w-full max-w-[400px]">
 
           {/* ─── LOGIN FORM ─── */}
@@ -621,11 +620,14 @@ export function LoginPage() {
             </div>
           )}
 
-          {/* Footer */}
-          <p className="text-xs text-gray-400 dark:text-gray-500 text-center pb-2 lg:absolute lg:bottom-3 lg:left-0 lg:right-0">
+        </div>
+        </div>
+
+        {/* Copyright - always pinned to bottom */}
+        <div className="flex-shrink-0 text-center pb-4 sm:pb-5 lg:pb-6">
+          <p className="text-xs text-gray-400 dark:text-gray-500">
             &copy; {new Date().getFullYear()} NexCommerce. All rights reserved.
           </p>
-        </div>
         </div>
       </div>
 
@@ -638,12 +640,6 @@ export function LoginPage() {
         </div>
 
         <div className="relative z-10 w-full flex flex-col items-start">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 mb-6">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs sm:text-sm font-medium text-white/90">Multi-tenant SaaS Platform</span>
-          </div>
-
           {/* Title */}
           <h2 className="text-[28px] lg:text-[34px] xl:text-[42px] font-bold text-white text-left leading-[1.2] lg:leading-[1.25] mb-4 tracking-tight">
             The smarter way to manage your WooCommerce store.
@@ -651,24 +647,6 @@ export function LoginPage() {
           <p className="text-white/75 text-left text-sm lg:text-base xl:text-lg leading-relaxed mb-8 max-w-lg">
             NexCommerce gives you complete control over products, orders, analytics, and customer experience — all from one powerful dashboard built for modern commerce.
           </p>
-
-          {/* Feature Highlights */}
-          <div className="grid grid-cols-2 gap-3 lg:gap-4 mb-8 w-full max-w-md">
-            {[
-              { icon: ShoppingCart, label: 'Order Management', desc: 'Track & fulfill effortlessly' },
-              { icon: Package, label: 'Product Catalog', desc: 'Organize your inventory' },
-              { icon: BarChart3, label: 'Analytics', desc: 'Data-driven decisions' },
-              { icon: ShieldIcon, label: 'Secure & Reliable', desc: 'Enterprise-grade security' },
-            ].map((item) => (
-              <div key={item.label} className="flex items-start gap-2.5 p-3 rounded-lg bg-white/[0.07] border border-white/[0.08]">
-                <item.icon className="h-4 w-4 mt-0.5 text-blue-200 shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-xs lg:text-sm font-semibold text-white leading-tight">{item.label}</p>
-                  <p className="text-[10px] lg:text-xs text-white/60 mt-0.5 leading-snug">{item.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
 
           {/* Illustration */}
           <div className="w-full flex-1 min-h-0 flex items-center justify-center">
