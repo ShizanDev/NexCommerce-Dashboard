@@ -452,3 +452,38 @@ Stage Summary:
 - All sidebar content (logo, group labels, nav items, footer) starts at the same left edge
 - Border lines between header and content sections are visually aligned
 - Collapsed state properly handles px-0 override
+
+---
+Task ID: 6
+Agent: Main Agent
+Task: Test and fix Remember Me functionality - 30-day session persistence
+
+Work Log:
+- Analyzed current Remember Me implementation across login-page.tsx, app-store.ts, and page.tsx
+- Found 3 bugs:
+  1. **No expiry validation on session restore** (page.tsx): `session.isLoggedIn` was checked but `expiresAt` was never validated, meaning sessions never actually expired
+  2. **No expiry for non-Remember-Me sessions**: When `rememberMe=false`, no `expiresAt` was set, so the session persisted in localStorage forever
+  3. **Old sessions without expiresAt**: Existing sessions from before this fix had no `expiresAt` field, which would cause the new validation to reject them
+- Fixed login-page.tsx `handleAuthSuccess`:
+  - Remember Me ON: `expiresAt = Date.now() + 30 days`
+  - Remember Me OFF: `expiresAt = Date.now() + 24 hours`
+  - Both cases now always include `expiresAt` and `rememberMe` fields
+- Fixed page.tsx session restore:
+  - Added `session.expiresAt && session.expiresAt > Date.now()` validation
+  - Expired sessions are automatically cleared from localStorage
+  - Corrupted/invalid sessions are caught and cleared
+  - Missing `expiresAt` sessions are rejected and cleared
+- Fixed next.config.ts: Changed `allowedDevOrigins: ["*"]` to proper URL format `["http://127.0.0.1:3000", "http://localhost:3000"]`
+- Ran 5 simulation tests covering all edge cases:
+  1. 30-day Remember Me session: ✅ valid (30.0 days remaining)
+  2. Expired Remember Me session: ✅ rejected (shows login page)
+  3. 24-hour non-Remember Me session: ✅ valid (24.0 hours remaining)
+  4. Session without expiresAt: ✅ rejected (cleared from localStorage)
+  5. Corrupted session JSON: ✅ caught and cleared
+- ESLint passes clean
+
+Stage Summary:
+- Remember Me checkbox now works correctly: 30-day session when checked, 24-hour session when unchecked
+- Expired sessions automatically redirect to login page on page reload
+- All edge cases handled: expired, missing, corrupted sessions
+- Session data format: `{isLoggedIn, name, email, id, role, expiresAt, rememberMe}`

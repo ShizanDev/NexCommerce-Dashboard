@@ -40,11 +40,14 @@ export default function Home() {
     if (saved) {
       try {
         const session = JSON.parse(saved)
-        if (session.isLoggedIn) {
+        if (session.isLoggedIn && session.expiresAt && session.expiresAt > Date.now()) {
           setLoggedIn(true, session.name, session.id, session.role)
+        } else {
+          // Session expired or invalid — clear it
+          localStorage.removeItem('wc_dashboard_session')
         }
       } catch {
-        // ignore
+        localStorage.removeItem('wc_dashboard_session')
       }
     }
 

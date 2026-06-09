@@ -235,14 +235,15 @@ export function LoginPage() {
 
   function handleAuthSuccess(user: { id: string; email: string; name: string; role: string }, isNewUser: boolean) {
     localStorage.removeItem('wc_dashboard_session')
-    const expiryMs = rememberMe ? 30 * 24 * 60 * 60 * 1000 : undefined
+    const expiryMs = rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000
     const session = {
       isLoggedIn: true,
       name: user.name,
       email: user.email,
       id: user.id,
       role: user.role,
-      ...(expiryMs && { expiresAt: Date.now() + expiryMs, rememberMe: true }),
+      expiresAt: Date.now() + expiryMs,
+      rememberMe,
     }
     localStorage.setItem('wc_dashboard_session', JSON.stringify(session))
     setLoggedIn(true, user.name, user.id, user.role)
