@@ -378,12 +378,12 @@ export function LoginPage() {
       <ThemedToast toasts={toasts} onDismiss={dismissToast} />
 
       {/* ═══════ LEFT: Form Panel ═══════ */}
-      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center px-8 sm:px-12 lg:px-16 bg-white dark:bg-slate-950 relative">
-        <div className="w-full max-w-[400px] py-10 lg:py-0">
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-start px-8 sm:px-12 lg:px-16 pt-8 bg-white dark:bg-slate-950 relative">
+        <div className="w-full max-w-[400px]">
 
           {/* Logo */}
-          <div className="mb-8">
-            <img src="/logo.png" alt="NexCommerce" className="h-8 w-auto object-contain" />
+          <div className="mb-10">
+            <img src="/logo.png" alt="NexCommerce" className="h-9 w-auto object-contain" />
           </div>
 
           {/* ─── LOGIN FORM ─── */}
@@ -621,28 +621,28 @@ export function LoginPage() {
       </div>
 
       {/* ═══════ RIGHT: Hero Panel ═══════ */}
-      <div className="hidden lg:flex w-1/2 flex-col items-center justify-center p-[10px] relative overflow-hidden bg-gradient-to-br from-[#3B82F6] to-[#1E40AF]">
+      <div className="hidden lg:flex w-1/2 flex-col items-start justify-center p-[10px] relative overflow-hidden bg-gradient-to-br from-[#3B82F6] to-[#1E40AF] rounded-[10px]">
         {/* Ambient glow */}
         <div className="absolute inset-0">
           <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-blue-400/10 rounded-full blur-3xl" />
           <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-blue-300/10 rounded-full blur-3xl" />
         </div>
 
-        <div className="relative z-10 w-full flex flex-col items-center">
+        <div className="relative z-10 w-full flex flex-col items-start">
           {/* Title */}
-          <h2 className="text-[30px] sm:text-[36px] font-semibold text-white text-center leading-snug mb-6">
+          <h2 className="text-[30px] sm:text-[36px] font-semibold text-white text-left leading-[1.4] mb-4">
             Manage your store,<br />all in one place.
           </h2>
-          <p className="text-white/80 text-center text-base mb-10">
+          <p className="text-white/80 text-left text-base leading-relaxed mb-8">
             Plan. Build. Track. Deliver.
           </p>
 
           {/* Illustration */}
-          <div className="w-full flex-1 min-h-0">
+          <div className="w-full flex-1 min-h-0 flex items-center justify-center">
             <img
               src="/login-illustration.png"
               alt="NexCommerce Dashboard"
-              className="w-full h-full object-contain drop-shadow-2xl"
+              className="w-[95%] h-auto object-contain drop-shadow-2xl"
             />
           </div>
         </div>
