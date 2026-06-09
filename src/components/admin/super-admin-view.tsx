@@ -447,7 +447,7 @@ export default function SuperAdminView() {
   // ─── Render ──────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 view-enter">
       {/* ── Page Header ──────────────────────────────────────────────── */}
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
@@ -471,7 +471,7 @@ export default function SuperAdminView() {
       </div>
 
       {/* ── 1. KPI Stat Cards (8 cards) ─────────────────────────────── */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 card-stagger">
         {loading ? (
           <>
             {Array.from({ length: 8 }).map((_, i) => (

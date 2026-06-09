@@ -1,7 +1,7 @@
 'use client'
 
 import { useTheme } from 'next-themes'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Sun, Moon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -17,26 +17,30 @@ function useMounted() {
 export function ThemeToggle({ className }: { className?: string }) {
   const { setTheme, resolvedTheme } = useTheme()
   const mounted = useMounted()
+  const [isAnimating, setIsAnimating] = useState(false)
 
   const isDark = mounted && resolvedTheme === 'dark'
 
-  function toggleTheme() {
+  const toggleTheme = useCallback(() => {
+    if (isAnimating) return
+    setIsAnimating(true)
     setTheme(isDark ? 'light' : 'dark')
-  }
+    setTimeout(() => setIsAnimating(false), 300)
+  }, [isDark, setTheme, isAnimating])
 
   // Hydration-safe placeholder — same dimensions to prevent layout shift
   if (!mounted) {
     return (
       <div
         className={cn(
-          'relative inline-flex h-7 w-[52px] shrink-0 cursor-pointer items-center rounded-full',
-          'bg-muted',
+          'relative inline-flex h-9 w-9 items-center justify-center rounded-lg',
+          'bg-muted/50',
           className
         )}
         aria-label="Toggle theme"
       >
         <span className="sr-only">Toggle theme</span>
-        <span className="pointer-events-none block h-[22px] w-[22px] rounded-full bg-background shadow-sm ml-0.5" />
+        <Sun className="h-4 w-4 text-muted-foreground/50" />
       </div>
     )
   }
@@ -44,16 +48,13 @@ export function ThemeToggle({ className }: { className?: string }) {
   return (
     <button
       type="button"
-      role="switch"
-      aria-checked={isDark}
       onClick={toggleTheme}
       className={cn(
-        'relative inline-flex h-7 w-[52px] shrink-0 cursor-pointer items-center rounded-full',
+        'relative inline-flex h-9 w-9 items-center justify-center rounded-lg',
         'transition-all duration-200 ease-in-out',
+        'hover:bg-accent active:scale-95',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-        isDark
-          ? 'bg-primary shadow-sm shadow-primary/25'
-          : 'bg-muted-foreground/20 hover:bg-muted-foreground/30',
+        isDark && 'hover:bg-white/10',
         className
       )}
       aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
@@ -61,34 +62,27 @@ export function ThemeToggle({ className }: { className?: string }) {
     >
       <span className="sr-only">Switch to {isDark ? 'light' : 'dark'} mode</span>
 
-      {/* Switch Track — subtle inner highlight */}
-      <span className="absolute inset-0 rounded-full opacity-100 pointer-events-none" />
-
-      {/* Thumb with embedded icon */}
-      <span
+      {/* Sun icon — visible in light mode, hidden in dark */}
+      <Sun
         className={cn(
-          'pointer-events-none relative flex items-center justify-center',
-          'rounded-full shadow-md',
-          'transition-all duration-200 ease-in-out',
-          'h-[22px] w-[22px]',
+          'absolute h-[18px] w-[18px] transition-all duration-200 ease-in-out',
           isDark
-            ? 'translate-x-[26px] bg-primary-foreground'
-            : 'translate-x-[3px] bg-background',
+            ? 'rotate-90 scale-0 opacity-0'
+            : 'rotate-0 scale-100 opacity-100 text-amber-500'
         )}
-      >
-        {isDark ? (
-          <Moon className="h-3 w-3 text-primary" strokeWidth={2.5} />
-        ) : (
-          <Sun className="h-3 w-3 text-amber-500" strokeWidth={2.5} />
-        )}
-      </span>
+        strokeWidth={2}
+      />
 
-      {/* Background hint icon (opposite side, faded) */}
-      {isDark ? (
-        <Sun className="pointer-events-none absolute left-1.5 h-3 w-3 text-primary-foreground/30" />
-      ) : (
-        <Moon className="pointer-events-none absolute right-1.5 h-3 w-3 text-muted-foreground/50" />
-      )}
+      {/* Moon icon — visible in dark mode, hidden in light */}
+      <Moon
+        className={cn(
+          'absolute h-[18px] w-[18px] transition-all duration-200 ease-in-out',
+          isDark
+            ? 'rotate-0 scale-100 opacity-100 text-blue-400'
+            : '-rotate-90 scale-0 opacity-0'
+        )}
+        strokeWidth={2}
+      />
     </button>
   )
 }

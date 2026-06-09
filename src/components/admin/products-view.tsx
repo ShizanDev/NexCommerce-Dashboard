@@ -63,7 +63,7 @@ export default function ProductsView() {
   )
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 view-enter">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Products</h1>
         <p className="text-muted-foreground mt-1">Browse products from your WooCommerce store</p>

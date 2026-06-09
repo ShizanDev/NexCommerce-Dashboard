@@ -138,7 +138,7 @@ export default function OrdersView() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 card-stagger">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Orders</CardTitle>
@@ -214,7 +214,7 @@ export default function OrdersView() {
       </div>
 
       {/* Orders Table */}
-      <Card>
+      <Card className="view-enter" style={{ animationDelay: '0.2s' }}>
         <CardContent className="p-0">
           <Table>
             <TableHeader>

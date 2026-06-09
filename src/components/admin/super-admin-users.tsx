@@ -709,7 +709,7 @@ export default function SuperAdminUsers() {
 
   if (error && !users.length) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 view-enter">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
           <p className="text-muted-foreground mt-1">
@@ -728,7 +728,7 @@ export default function SuperAdminUsers() {
   // ── Render ──────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 view-enter">
       {/* ── Page Header ─────────────────────────────────────────────── */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">User Management</h1>

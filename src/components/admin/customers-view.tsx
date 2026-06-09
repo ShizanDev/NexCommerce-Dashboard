@@ -72,7 +72,7 @@ export default function CustomersView() {
   }, [fetchCustomers])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 view-enter">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Customers</h1>
         <p className="text-muted-foreground mt-1">View customers from your WooCommerce orders</p>

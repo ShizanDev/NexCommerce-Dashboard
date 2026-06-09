@@ -303,7 +303,7 @@ export default function SuperAdminAnalytics() {
   // ─── Render ────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 view-enter">
       {/* Page Header */}
       <div className="flex items-start justify-between">
         <div>
@@ -319,7 +319,7 @@ export default function SuperAdminAnalytics() {
       </div>
 
       {/* ── 1. Summary Cards Row ──────────────────────────────────── */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 card-stagger">
         {loading ? (
           <>
             <SummaryCardSkeleton />

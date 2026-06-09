@@ -603,3 +603,53 @@ Stage Summary:
 - Dark mode no longer flashes on page load (FOUC prevented)
 - Color theme is consistent across the entire application — every component audited
 - All hardcoded colors are intentional semantic/functional colors with proper dark variants
+---
+Task ID: 9
+Agent: Main Agent
+Task: Replace switch with toggle button + improve dashboard smoothness and animations
+
+Work Log:
+- **Redesigned theme-toggle.tsx** — Changed from switch-style slider to a clean toggle button:
+  - h-9 w-9 rounded-lg button format (similar to Vercel/Stripe style)
+  - Sun icon (amber-500) visible in light mode, rotates out → scale 0
+  - Moon icon (blue-400) rotates in → scale 100 in dark mode
+  - Smooth 0.2s ease-in-out rotation + scale + opacity transitions
+  - Hover: bg-accent (light) / bg-white/10 (dark)
+  - Active: scale-95 press effect
+  - Hydration-safe placeholder with muted sun icon
+  - Animation debouncing (isAnimating guard prevents rapid double-clicks)
+- **Enhanced globals.css** with comprehensive animation system:
+  - Removed overly broad global transition on ALL elements (was causing jank)
+  - Added `.transitioning` class for targeted theme transitions (background, border, color, box-shadow, opacity)
+  - Added interactive element transitions (a, button, [role="button"], input, select, textarea)
+  - Added card hover effect: subtle box-shadow + border-color transition
+  - Added table row hover: smooth background-color transition
+  - Added skeleton shimmer animation (smooth opacity pulse instead of default)
+  - Added view-fade-in/view-fade-out keyframe animations (0.2s ease-out)
+  - Added card-enter stagger animation with 0.05s delays (up to 6 children)
+  - Added button press effect: scale(0.97) on :active
+  - Added smooth scrollbar styling (thin, 6px, matching border color)
+  - Added badge-pulse animation utility
+- **Updated page.tsx** with view transition system:
+  - Added `key={activeView}` on main content wrapper
+  - `view-enter` class triggers fade-in + slide-up animation on every view switch
+  - Removed unused viewTransition/viewKey state (lint-compliant approach)
+- **Added stagger animations to all dashboard views**:
+  - dashboard-view.tsx: card-stagger on stat cards + bottom grid
+  - orders-view.tsx: card-stagger on summary cards
+  - settings-view.tsx: card-stagger on settings grid
+  - super-admin-view.tsx: card-stagger on KPI grid
+  - super-admin-analytics.tsx: card-stagger on chart grid
+  - All views: view-enter class on main container
+- **Verified**: ESLint passes clean (0 errors, 0 warnings)
+- **Verified**: Dev server compiles, HTTP 200 returned
+
+Stage Summary:
+- Theme toggle redesigned as clean toggle button with sun/moon rotation animation
+- View transitions: fade-in + slide-up when switching between dashboard pages
+- Card stagger: stat cards animate in sequentially (0.05s delay between each)
+- Skeleton loading: smooth shimmer instead of abrupt pulse
+- Button interactions: scale-95 press effect on all interactive elements
+- Table rows: smooth background-color transition on hover
+- Scrollbar: thin, theme-aware styling across all scrollable areas
+- All animations use 0.2s ease-in-out timing for consistency

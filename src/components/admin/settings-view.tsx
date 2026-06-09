@@ -273,7 +273,7 @@ export default function SettingsView() {
   const isConnected = connectionStatus === 'connected'
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 view-enter">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
         <p className="text-muted-foreground mt-1">Configure your WooCommerce connection and preferences</p>
@@ -369,7 +369,7 @@ export default function SettingsView() {
           <CardDescription>Follow these steps to connect your WooCommerce store</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 card-stagger">
             {[
               { step: 1, title: 'Generate Keys', desc: 'WooCommerce → Settings → API → Add Key' },
               { step: 2, title: 'Enter Credentials', desc: 'Paste Store URL, Key, and Secret below' },

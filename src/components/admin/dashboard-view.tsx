@@ -174,7 +174,7 @@ export default function DashboardView() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 card-stagger">
         {loading ? (
           <>
             <StatCardSkeleton />
@@ -213,7 +213,7 @@ export default function DashboardView() {
       </div>
 
       {/* Revenue Chart */}
-      <Card>
+      <Card className="view-enter" style={{ animationDelay: '0.2s' }}>
         <CardHeader>
           <CardTitle>Revenue Overview</CardTitle>
           <CardDescription>Monthly revenue for the last 6 months</CardDescription>
@@ -262,7 +262,7 @@ export default function DashboardView() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3 card-stagger">
         {/* Recent Orders */}
         <Card className="lg:col-span-2">
           <CardHeader>

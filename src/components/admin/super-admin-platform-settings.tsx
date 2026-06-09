@@ -246,7 +246,7 @@ export default function SuperAdminPlatformSettings() {
   // ─── Render ────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 view-enter">
       {/* Page Header */}
       <div className="flex items-start justify-between">
         <div>
