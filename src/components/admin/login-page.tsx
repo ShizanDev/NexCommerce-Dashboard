@@ -378,7 +378,7 @@ export function LoginPage() {
       <ThemedToast toasts={toasts} onDismiss={dismissToast} />
 
       {/* ═══════ LEFT: Form Panel ═══════ */}
-      <div className="w-full lg:w-1/2 flex flex-col items-center justify-start px-8 sm:px-12 lg:px-16 pt-8 bg-white dark:bg-slate-950 relative">
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center px-8 sm:px-12 lg:px-16 bg-white dark:bg-slate-950 relative">
         <div className="w-full max-w-[400px]">
 
           {/* Logo */}
@@ -621,7 +621,7 @@ export function LoginPage() {
       </div>
 
       {/* ═══════ RIGHT: Hero Panel ═══════ */}
-      <div className="hidden lg:flex w-1/2 flex-col items-start justify-center p-[10px] relative overflow-hidden bg-gradient-to-br from-[#3B82F6] to-[#1E40AF] rounded-[10px]">
+      <div className="hidden lg:flex w-1/2 flex-col items-start justify-center p-[50px] relative overflow-hidden bg-gradient-to-br from-[#3B82F6] to-[#1E40AF] rounded-[10px]">
         {/* Ambient glow */}
         <div className="absolute inset-0">
           <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-blue-400/10 rounded-full blur-3xl" />
@@ -630,10 +630,10 @@ export function LoginPage() {
 
         <div className="relative z-10 w-full flex flex-col items-start">
           {/* Title */}
-          <h2 className="text-[30px] sm:text-[36px] font-semibold text-white text-left leading-[1.4] mb-4">
+          <h2 className="text-[34px] sm:text-[42px] font-semibold text-white text-left leading-[1.3] mb-4">
             Manage your store,<br />all in one place.
           </h2>
-          <p className="text-white/80 text-left text-base leading-relaxed mb-8">
+          <p className="text-white/80 text-left text-lg leading-relaxed mb-8">
             Plan. Build. Track. Deliver.
           </p>
 
