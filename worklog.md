@@ -307,3 +307,41 @@ Stage Summary:
 - Right panel now uses user's custom illustration (Login Image (1).png)
 - All colors, spacing, heights match the reference design
 - Blue gradient from #3B82F6 to #1E40AF on right panel
+## Work Log Entry
+
+### Date: 2026-06-09 07:18:20 UTC
+
+### Changes: Sidebar alignment & smooth logo/favicon transition
+
+**File: `src/components/admin/sidebar.tsx`**
+1. **Smooth logo/favicon crossfade (Fix 1):** Replaced the instant `hidden`/`group-data-[collapsible=icon]:hidden` DOM toggle with a crossfade approach using overlapping `opacity` + `scale` transitions (`transition-all duration-200 ease-in-out`). Full logo fades out (`opacity-0 scale-95`) while favicon fades in (`opacity-100 scale-100`) when collapsing — eliminates the visual jerk/jump.
+2. **Content alignment (Fix 2):** Changed `SidebarContent` padding from `px-3` to `px-2` for consistent alignment with header/footer.
+3. **Footer alignment (Fix 3):** Changed `SidebarFooter` padding from `px-3` to `px-2` to match content alignment.
+
+**File: `src/components/ui/sidebar.tsx`**
+4. **Smoother button transitions (Fix 4):** Changed `sidebarMenuButtonVariants` base from `transition-[width,height,padding]` to `transition-all duration-200 ease-in-out` for smoother sidebar collapse/expand animation on all menu buttons.
+
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Fix login page layout (15px padding, white bg, right panel 10px padding, image 100% w/h, absolute bottom copyright) + replace illustration image
+
+Work Log:
+- Replaced login illustration: Copied "Login Image (1).png" → public/login-illustration.png (e-commerce dashboard illustration with person)
+- Fixed main container: Added `p-[15px] bg-white` to outer wrapper
+- Fixed left container: Added `relative flex-col` for absolute footer positioning
+- Fixed copyright footer: Changed to `lg:absolute lg:bottom-3 lg:left-0 lg:right-0` — "© 2026" text now at absolute bottom on desktop
+- Fixed right container: Changed padding from `px-12 lg:px-16` to `p-[10px]`
+- Increased right panel heading: `text-[28px] sm:text-[32px]` → `text-[30px] sm:text-[36px]`
+- Increased right panel subtitle: `text-sm` → `text-base`
+- Fixed illustration: Removed `max-w-[500px]`, uses `w-full flex-1 min-h-0` with `w-full h-full object-contain` for full responsive coverage
+- Verified computed styles: mainPadding=15px, rightPanelPadding=10px ✅
+- Verified with agent-browser: layout correct, login flow works
+
+Stage Summary:
+- Login page now has 15px white padding border around entire layout
+- Right panel has 10px padding with illustration taking 100% width/height
+- Copyright text at absolute bottom of left panel
+- New illustration image applied
+- All spacing and typography matches user requirements

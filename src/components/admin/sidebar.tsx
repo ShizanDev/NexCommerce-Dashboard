@@ -117,13 +117,19 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" className="hover:bg-transparent">
-              {/* Full logo: visible when expanded, hidden when collapsed */}
-              <div className="flex items-center justify-start overflow-hidden group-data-[collapsible=icon]:hidden">
-                <img src="/logo.png" alt="NexCommerce" className="h-7 w-auto object-contain" />
-              </div>
-              {/* Favicon icon: visible when collapsed, hidden when expanded */}
-              <div className="flex items-center justify-center overflow-hidden group-data-[collapsible=icon]:flex hidden">
-                <img src="/favicon-icon.png" alt="NexCommerce" className="h-7 w-7 object-contain rounded-md" />
+              <div className="relative flex items-center justify-center h-7 w-full overflow-hidden">
+                {/* Full logo: fades out when collapsed */}
+                <img
+                  src="/logo.png"
+                  alt="NexCommerce"
+                  className="h-7 w-auto object-contain transition-all duration-200 ease-in-out opacity-100 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:scale-95"
+                />
+                {/* Favicon icon: fades in when collapsed */}
+                <img
+                  src="/favicon-icon.png"
+                  alt="NexCommerce"
+                  className="absolute h-7 w-7 object-contain rounded-md transition-all duration-200 ease-in-out opacity-0 group-data-[collapsible=icon]:opacity-100 group-data-[collapsible=icon]:scale-100"
+                />
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -131,7 +137,7 @@ export function AppSidebar() {
       </SidebarHeader>
 
       {/* ─── Navigation Content ────────────────────────── */}
-      <SidebarContent className="px-3 py-2 group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:py-1">
+      <SidebarContent className="px-2 py-2 group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:py-1">
         {isSuperAdmin ? (
           // ─── SUPER ADMIN SIDEBAR ──────────────────────────────
           <>
@@ -185,7 +191,7 @@ export function AppSidebar() {
       </SidebarContent>
 
       {/* ─── Footer ─────────────────────────────────────── */}
-      <SidebarFooter className="border-t px-3 py-2.5 space-y-1.5 group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:py-2 group-data-[collapsible=icon]:items-center">
+      <SidebarFooter className="border-t px-2 py-2.5 space-y-1.5 group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:py-2 group-data-[collapsible=icon]:items-center">
         {/* WC Connection Status (only for regular admin) */}
         {!isSuperAdmin && (
           <div className="flex items-center gap-2 text-xs justify-center group-data-[collapsible=icon]:justify-center">

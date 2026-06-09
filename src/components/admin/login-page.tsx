@@ -374,11 +374,11 @@ export function LoginPage() {
   const linkClass = "text-[#3B82F6] hover:text-[#2563EB] font-medium transition-colors"
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex p-[15px] bg-white dark:bg-slate-950">
       <ThemedToast toasts={toasts} onDismiss={dismissToast} />
 
       {/* ═══════ LEFT: Form Panel ═══════ */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center px-8 sm:px-12 lg:px-16 bg-white dark:bg-slate-950">
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center px-8 sm:px-12 lg:px-16 bg-white dark:bg-slate-950 relative">
         <div className="w-full max-w-[400px] py-10 lg:py-0">
 
           {/* Logo */}
@@ -614,14 +614,14 @@ export function LoginPage() {
           )}
 
           {/* Footer */}
-          <p className="mt-8 text-xs text-gray-400 dark:text-gray-500 text-center">
-            &copy; {new Date().getFullYear()} NexCommerce
+          <p className="text-xs text-gray-400 dark:text-gray-500 text-center pb-2 lg:absolute lg:bottom-3 lg:left-0 lg:right-0">
+            &copy; {new Date().getFullYear()} NexCommerce. All rights reserved.
           </p>
         </div>
       </div>
 
       {/* ═══════ RIGHT: Hero Panel ═══════ */}
-      <div className="hidden lg:flex w-1/2 flex-col items-center justify-center px-12 lg:px-16 relative overflow-hidden bg-gradient-to-br from-[#3B82F6] to-[#1E40AF]">
+      <div className="hidden lg:flex w-1/2 flex-col items-center justify-center p-[10px] relative overflow-hidden bg-gradient-to-br from-[#3B82F6] to-[#1E40AF]">
         {/* Ambient glow */}
         <div className="absolute inset-0">
           <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-blue-400/10 rounded-full blur-3xl" />
@@ -630,19 +630,19 @@ export function LoginPage() {
 
         <div className="relative z-10 w-full flex flex-col items-center">
           {/* Title */}
-          <h2 className="text-[28px] sm:text-[32px] font-semibold text-white text-center leading-snug mb-6">
+          <h2 className="text-[30px] sm:text-[36px] font-semibold text-white text-center leading-snug mb-6">
             Manage your store,<br />all in one place.
           </h2>
-          <p className="text-white/80 text-center text-sm mb-10">
+          <p className="text-white/80 text-center text-base mb-10">
             Plan. Build. Track. Deliver.
           </p>
 
           {/* Illustration */}
-          <div className="w-full max-w-[500px]">
+          <div className="w-full flex-1 min-h-0">
             <img
               src="/login-illustration.png"
               alt="NexCommerce Dashboard"
-              className="w-full h-auto drop-shadow-2xl"
+              className="w-full h-full object-contain drop-shadow-2xl"
             />
           </div>
         </div>
