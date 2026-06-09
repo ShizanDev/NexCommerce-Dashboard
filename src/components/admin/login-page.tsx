@@ -369,281 +369,281 @@ export function LoginPage() {
   // ─── RENDER ─────────────────────────────────────────────────────
   // ═════════════════════════════════════════════════════════════════
 
-  const inputClass = "pl-10 h-12 rounded-lg border-gray-200 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-900/50 text-sm focus:border-[#2563EB] focus:ring-[#2563EB]/20"
-  const btnPrimary = "w-full h-12 rounded-lg bg-[#2563EB] hover:bg-[#1d4ed8] text-white font-medium text-base shadow-sm shadow-blue-500/20 transition-all"
-  const linkClass = "text-[#2563EB] hover:text-[#1d4ed8] font-medium transition-colors"
+  const inputClass = "pl-10 h-11 rounded-lg border-[#E2E8F0] bg-[#F8FAFC] dark:border-gray-700 dark:bg-gray-900/50 text-sm focus:border-[#3B82F6] focus:ring-[#3B82F6]/20"
+  const btnPrimary = "w-full h-11 rounded-lg bg-[#3B82F6] hover:bg-[#2563EB] text-white font-medium text-[15px] shadow-md shadow-blue-500/20 transition-all"
+  const linkClass = "text-[#3B82F6] hover:text-[#2563EB] font-medium transition-colors"
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex">
       <ThemedToast toasts={toasts} onDismiss={dismissToast} />
 
-      <div className="flex-1 flex flex-col lg:flex-row">
+      {/* ═══════ LEFT: Form Panel ═══════ */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center px-8 sm:px-12 lg:px-16 bg-white dark:bg-slate-950">
+        <div className="w-full max-w-[400px] py-10 lg:py-0">
 
-        {/* ═══════ LEFT: Form ═══════ */}
-        <div className="w-full lg:w-1/2 flex items-center justify-center px-6 py-10 sm:px-10 lg:px-16 bg-white dark:bg-slate-950">
-          <div className="w-full max-w-[420px]">
-
-            {/* Logo */}
-            <div className="mb-10">
-              <img src="/logo.png" alt="NexCommerce" className="h-9 w-auto object-contain" />
-            </div>
-
-            {/* ─── LOGIN FORM ─── */}
-            {step === 'login-form' && (
-              <form onSubmit={handleLoginSubmit} className="space-y-4">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Welcome back</h2>
-                </div>
-
-                <FormErrorBanner message={formError} />
-
-                {/* Email */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="login-email" className="text-sm font-medium text-gray-700 dark:text-gray-300">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input id="login-email" type="email" placeholder="admin@store.com" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className={inputClass} required />
-                  </div>
-                </div>
-
-                {/* Password */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="login-password" className="text-sm font-medium text-gray-700 dark:text-gray-300">Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input id="login-password" type={showLoginPassword ? 'text' : 'password'} placeholder="Enter password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className={inputClass + ' pr-10'} required />
-                    <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                      {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Remember Me */}
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 cursor-pointer select-none">
-                    <Checkbox checked={rememberMe} onCheckedChange={(c) => setRememberMe(c === true)} className="data-[state=checked]:bg-[#2563EB] data-[state=checked]:border-[#2563EB] h-4 w-4" />
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Remember me</span>
-                  </label>
-                </div>
-
-                {/* Submit */}
-                <Button type="submit" className={btnPrimary} disabled={loading}>
-                  {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying...</> : 'Sign In'}
-                </Button>
-
-                <OrDivider />
-
-                {/* Google */}
-                <button type="button" onClick={handleGoogleLogin} className="w-full flex items-center justify-center gap-2.5 h-12 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-gray-300 font-medium text-sm transition-colors">
-                  <GoogleIcon className="h-5 w-5" /> Google
-                </button>
-
-                {/* Footer link */}
-                <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-                  Don&apos;t have an account?{' '}
-                  <button type="button" onClick={switchToSignup} className={linkClass}>Sign Up</button>
-                </p>
-              </form>
-            )}
-
-            {/* ─── LOGIN OTP ─── */}
-            {step === 'login-otp' && (
-              <div className="space-y-6">
-                <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
-                  <ArrowLeft className="h-4 w-4" /> Back
-                </button>
-
-                <div className="space-y-4">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20">
-                    <ShieldCheck className="h-6 w-6 text-[#2563EB]" />
-                  </div>
-                  <div className="text-center">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Verify OTP</h2>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Code sent to <span className="font-medium text-gray-700 dark:text-gray-300">{otpSentEmail}</span></p>
-                  </div>
-                </div>
-
-                <div className="flex justify-center">
-                  <InputOTP maxLength={6} value={loginOtp} onChange={setLoginOtp} onComplete={handleLoginOtpComplete}>
-                    <InputOTPGroup>
-                      <InputOTPSlot index={0} />
-                      <InputOTPSlot index={1} />
-                      <InputOTPSlot index={2} />
-                    </InputOTPGroup>
-                    <InputOTPSeparator />
-                    <InputOTPGroup>
-                      <InputOTPSlot index={3} />
-                      <InputOTPSlot index={4} />
-                      <InputOTPSlot index={5} />
-                    </InputOTPGroup>
-                  </InputOTP>
-                </div>
-
-                <FormErrorBanner message={formError} />
-                {isSandboxMode && sandboxOtp && <SandboxBanner otp={sandboxOtp} detail={emailErrorDetail} />}
-
-                {loading && (
-                  <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Verifying...
-                  </div>
-                )}
-
-                <div className="text-center">
-                  {otpCooldown > 0 ? (
-                    <p className="text-sm text-gray-500">Resend in <span className="font-medium text-[#2563EB]">{otpCooldown}s</span></p>
-                  ) : (
-                    <button type="button" onClick={() => sendOtp(loginEmail, 'login')} className={`text-sm ${linkClass}`}>
-                      Resend code
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* ─── SIGNUP FORM ─── */}
-            {step === 'signup-form' && (
-              <form onSubmit={handleSignupSubmit} className="space-y-4">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Create account</h2>
-                </div>
-
-                <FormErrorBanner message={formError} />
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="signup-name" className="text-sm font-medium text-gray-700 dark:text-gray-300">Full Name</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input id="signup-name" type="text" placeholder="Your full name" value={signupName} onChange={(e) => setSignupName(e.target.value)} className={inputClass} required />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="signup-email" className="text-sm font-medium text-gray-700 dark:text-gray-300">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input id="signup-email" type="email" placeholder="admin@store.com" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} className={inputClass} required />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="signup-password" className="text-sm font-medium text-gray-700 dark:text-gray-300">Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input id="signup-password" type={showSignupPassword ? 'text' : 'password'} placeholder="Min 6 characters" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} className={inputClass + ' pr-10'} required />
-                    <button type="button" onClick={() => setShowSignupPassword(!showSignupPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                      {showSignupPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="signup-confirm" className="text-sm font-medium text-gray-700 dark:text-gray-300">Confirm Password</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input id="signup-confirm" type="password" placeholder="Confirm password" value={signupConfirmPassword} onChange={(e) => setSignupConfirmPassword(e.target.value)} className={inputClass} required />
-                  </div>
-                </div>
-
-                <Button type="submit" className={btnPrimary} disabled={loading}>
-                  {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending OTP...</> : 'Sign Up'}
-                </Button>
-
-                <OrDivider />
-
-                <button type="button" onClick={handleGoogleLogin} className="w-full flex items-center justify-center gap-2.5 h-12 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-gray-300 font-medium text-sm transition-colors">
-                  <GoogleIcon className="h-5 w-5" /> Google
-                </button>
-
-                <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-                  Already have an account?{' '}
-                  <button type="button" onClick={switchToLogin} className={linkClass}>Sign In</button>
-                </p>
-              </form>
-            )}
-
-            {/* ─── SIGNUP OTP ─── */}
-            {step === 'signup-otp' && (
-              <div className="space-y-6">
-                <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
-                  <ArrowLeft className="h-4 w-4" /> Back
-                </button>
-
-                <div className="space-y-4">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20">
-                    <ShieldCheck className="h-6 w-6 text-[#2563EB]" />
-                  </div>
-                  <div className="text-center">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Verify Email</h2>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Code sent to <span className="font-medium text-gray-700 dark:text-gray-300">{otpSentEmail}</span></p>
-                  </div>
-                </div>
-
-                <div className="flex justify-center">
-                  <InputOTP maxLength={6} value={signupOtp} onChange={setSignupOtp} onComplete={handleSignupOtpComplete}>
-                    <InputOTPGroup>
-                      <InputOTPSlot index={0} />
-                      <InputOTPSlot index={1} />
-                      <InputOTPSlot index={2} />
-                    </InputOTPGroup>
-                    <InputOTPSeparator />
-                    <InputOTPGroup>
-                      <InputOTPSlot index={3} />
-                      <InputOTPSlot index={4} />
-                      <InputOTPSlot index={5} />
-                    </InputOTPGroup>
-                  </InputOTP>
-                </div>
-
-                <FormErrorBanner message={formError} />
-                {isSandboxMode && sandboxOtp && <SandboxBanner otp={sandboxOtp} detail={emailErrorDetail} />}
-
-                {loading && (
-                  <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Creating account...
-                  </div>
-                )}
-
-                <div className="text-center">
-                  {otpCooldown > 0 ? (
-                    <p className="text-sm text-gray-500">Resend in <span className="font-medium text-[#2563EB]">{otpCooldown}s</span></p>
-                  ) : (
-                    <button type="button" onClick={() => sendOtp(signupEmail, 'signup')} className={`text-sm ${linkClass}`}>
-                      Resend code
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Footer */}
-            <p className="mt-8 text-xs text-gray-400 dark:text-gray-500 text-center">
-              &copy; {new Date().getFullYear()} NexCommerce
-            </p>
+          {/* Logo */}
+          <div className="mb-8">
+            <img src="/logo.png" alt="NexCommerce" className="h-8 w-auto object-contain" />
           </div>
+
+          {/* ─── LOGIN FORM ─── */}
+          {step === 'login-form' && (
+            <form onSubmit={handleLoginSubmit} className="space-y-4">
+              <div>
+                <h2 className="text-[24px] font-bold text-gray-900 dark:text-gray-100 leading-tight">Welcome back</h2>
+              </div>
+
+              <FormErrorBanner message={formError} />
+
+              {/* Email */}
+              <div className="space-y-1.5">
+                <Label htmlFor="login-email" className="text-sm font-medium text-gray-700 dark:text-gray-300">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input id="login-email" type="email" placeholder="admin@store.com" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className={inputClass} required />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div className="space-y-1.5">
+                <Label htmlFor="login-password" className="text-sm font-medium text-gray-700 dark:text-gray-300">Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input id="login-password" type={showLoginPassword ? 'text' : 'password'} placeholder="Enter password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className={inputClass + ' pr-10'} required />
+                  <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                    {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Remember Me */}
+              <div className="flex items-center">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <Checkbox checked={rememberMe} onCheckedChange={(c) => setRememberMe(c === true)} className="data-[state=checked]:bg-[#3B82F6] data-[state=checked]:border-[#3B82F6] h-4 w-4" />
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Remember me</span>
+                </label>
+              </div>
+
+              {/* Submit */}
+              <Button type="submit" className={btnPrimary} disabled={loading}>
+                {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying...</> : 'Sign In'}
+              </Button>
+
+              <OrDivider />
+
+              {/* Google */}
+              <button type="button" onClick={handleGoogleLogin} className="w-full flex items-center justify-center gap-2.5 h-11 rounded-lg border border-[#E5E7EB] bg-white hover:bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-gray-300 font-medium text-sm transition-colors">
+                <GoogleIcon className="h-5 w-5" /> Google
+              </button>
+
+              {/* Footer link */}
+              <p className="text-center text-sm text-gray-500 dark:text-gray-400">
+                Don&apos;t have an account?{' '}
+                <button type="button" onClick={switchToSignup} className={linkClass}>Sign Up</button>
+              </p>
+            </form>
+          )}
+
+          {/* ─── LOGIN OTP ─── */}
+          {step === 'login-otp' && (
+            <div className="space-y-6">
+              <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
+                <ArrowLeft className="h-4 w-4" /> Back
+              </button>
+
+              <div className="space-y-4">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20">
+                  <ShieldCheck className="h-6 w-6 text-[#3B82F6]" />
+                </div>
+                <div className="text-center">
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Verify OTP</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Code sent to <span className="font-medium text-gray-700 dark:text-gray-300">{otpSentEmail}</span></p>
+                </div>
+              </div>
+
+              <div className="flex justify-center">
+                <InputOTP maxLength={6} value={loginOtp} onChange={setLoginOtp} onComplete={handleLoginOtpComplete}>
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                  </InputOTPGroup>
+                  <InputOTPSeparator />
+                  <InputOTPGroup>
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+
+              <FormErrorBanner message={formError} />
+              {isSandboxMode && sandboxOtp && <SandboxBanner otp={sandboxOtp} detail={emailErrorDetail} />}
+
+              {loading && (
+                <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Verifying...
+                </div>
+              )}
+
+              <div className="text-center">
+                {otpCooldown > 0 ? (
+                  <p className="text-sm text-gray-500">Resend in <span className="font-medium text-[#3B82F6]">{otpCooldown}s</span></p>
+                ) : (
+                  <button type="button" onClick={() => sendOtp(loginEmail, 'login')} className={`text-sm ${linkClass}`}>
+                    Resend code
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ─── SIGNUP FORM ─── */}
+          {step === 'signup-form' && (
+            <form onSubmit={handleSignupSubmit} className="space-y-4">
+              <div>
+                <h2 className="text-[24px] font-bold text-gray-900 dark:text-gray-100 leading-tight">Create account</h2>
+              </div>
+
+              <FormErrorBanner message={formError} />
+
+              <div className="space-y-1.5">
+                <Label htmlFor="signup-name" className="text-sm font-medium text-gray-700 dark:text-gray-300">Full Name</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input id="signup-name" type="text" placeholder="Your full name" value={signupName} onChange={(e) => setSignupName(e.target.value)} className={inputClass} required />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="signup-email" className="text-sm font-medium text-gray-700 dark:text-gray-300">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input id="signup-email" type="email" placeholder="admin@store.com" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} className={inputClass} required />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="signup-password" className="text-sm font-medium text-gray-700 dark:text-gray-300">Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input id="signup-password" type={showSignupPassword ? 'text' : 'password'} placeholder="Min 6 characters" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} className={inputClass + ' pr-10'} required />
+                  <button type="button" onClick={() => setShowSignupPassword(!showSignupPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                    {showSignupPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="signup-confirm" className="text-sm font-medium text-gray-700 dark:text-gray-300">Confirm Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input id="signup-confirm" type="password" placeholder="Confirm password" value={signupConfirmPassword} onChange={(e) => setSignupConfirmPassword(e.target.value)} className={inputClass} required />
+                </div>
+              </div>
+
+              <Button type="submit" className={btnPrimary} disabled={loading}>
+                {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending OTP...</> : 'Sign Up'}
+              </Button>
+
+              <OrDivider />
+
+              <button type="button" onClick={handleGoogleLogin} className="w-full flex items-center justify-center gap-2.5 h-11 rounded-lg border border-[#E5E7EB] bg-white hover:bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-gray-300 font-medium text-sm transition-colors">
+                <GoogleIcon className="h-5 w-5" /> Google
+              </button>
+
+              <p className="text-center text-sm text-gray-500 dark:text-gray-400">
+                Already have an account?{' '}
+                <button type="button" onClick={switchToLogin} className={linkClass}>Sign In</button>
+              </p>
+            </form>
+          )}
+
+          {/* ─── SIGNUP OTP ─── */}
+          {step === 'signup-otp' && (
+            <div className="space-y-6">
+              <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
+                <ArrowLeft className="h-4 w-4" /> Back
+              </button>
+
+              <div className="space-y-4">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20">
+                  <ShieldCheck className="h-6 w-6 text-[#3B82F6]" />
+                </div>
+                <div className="text-center">
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Verify Email</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Code sent to <span className="font-medium text-gray-700 dark:text-gray-300">{otpSentEmail}</span></p>
+                </div>
+              </div>
+
+              <div className="flex justify-center">
+                <InputOTP maxLength={6} value={signupOtp} onChange={setSignupOtp} onComplete={handleSignupOtpComplete}>
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                  </InputOTPGroup>
+                  <InputOTPSeparator />
+                  <InputOTPGroup>
+                    <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+
+              <FormErrorBanner message={formError} />
+              {isSandboxMode && sandboxOtp && <SandboxBanner otp={sandboxOtp} detail={emailErrorDetail} />}
+
+              {loading && (
+                <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Creating account...
+                </div>
+              )}
+
+              <div className="text-center">
+                {otpCooldown > 0 ? (
+                  <p className="text-sm text-gray-500">Resend in <span className="font-medium text-[#3B82F6]">{otpCooldown}s</span></p>
+                ) : (
+                  <button type="button" onClick={() => sendOtp(signupEmail, 'signup')} className={`text-sm ${linkClass}`}>
+                    Resend code
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Footer */}
+          <p className="mt-8 text-xs text-gray-400 dark:text-gray-500 text-center">
+            &copy; {new Date().getFullYear()} NexCommerce
+          </p>
+        </div>
+      </div>
+
+      {/* ═══════ RIGHT: Hero Panel ═══════ */}
+      <div className="hidden lg:flex w-1/2 flex-col items-center justify-center px-12 lg:px-16 relative overflow-hidden bg-gradient-to-br from-[#3B82F6] to-[#1E40AF]">
+        {/* Ambient glow */}
+        <div className="absolute inset-0">
+          <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-blue-400/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-blue-300/10 rounded-full blur-3xl" />
         </div>
 
-        {/* ═══════ RIGHT: Hero ═══════ */}
-        <div className="hidden lg:flex w-1/2 flex-col items-center justify-center px-10 py-14 lg:px-12 lg:py-16 relative overflow-hidden bg-[#2563EB]">
-          {/* Subtle glow */}
-          <div className="absolute inset-0">
-            <div className="absolute top-1/3 left-1/4 w-72 h-72 bg-blue-400/15 rounded-full blur-3xl" />
-            <div className="absolute bottom-1/3 right-1/4 w-56 h-56 bg-blue-300/10 rounded-full blur-3xl" />
-          </div>
+        <div className="relative z-10 w-full flex flex-col items-center">
+          {/* Title */}
+          <h2 className="text-[28px] sm:text-[32px] font-semibold text-white text-center leading-snug mb-6">
+            Manage your store,<br />all in one place.
+          </h2>
+          <p className="text-white/80 text-center text-sm mb-10">
+            Plan. Build. Track. Deliver.
+          </p>
 
-          <div className="relative z-10 w-full flex flex-col items-center">
-            {/* Title on top */}
-            <h2 className="text-2xl font-semibold text-white text-center leading-snug mb-8">
-              Manage your store,<br />all in one place.
-            </h2>
-
-            {/* Transparent illustration below */}
-            <div className="w-full max-w-[440px]">
-              <img
-                src="/login-illustration-white.png"
-                alt="NexCommerce"
-                className="w-full h-auto"
-              />
-            </div>
+          {/* Illustration */}
+          <div className="w-full max-w-[500px]">
+            <img
+              src="/login-illustration.png"
+              alt="NexCommerce Dashboard"
+              className="w-full h-auto drop-shadow-2xl"
+            />
           </div>
         </div>
       </div>
