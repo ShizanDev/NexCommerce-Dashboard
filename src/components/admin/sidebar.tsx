@@ -29,7 +29,6 @@ import {
   HeartPulse,
   Cog,
   UserCog,
-  TrendingUp,
 } from 'lucide-react'
 import { useEffect, useState, useRef } from 'react'
 import { formatDistanceToNow } from 'date-fns'
@@ -113,7 +112,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       {/* ─── Header / Logo ─────────────────────────────── */}
-      <SidebarHeader className="border-b h-14 gap-0 px-2 justify-center group-data-[collapsible=icon]:px-1.5 group-data-[collapsible=icon]:justify-center">
+      <SidebarHeader className="border-b border-sidebar-border h-14 gap-0 px-2 justify-center group-data-[collapsible=icon]:px-1.5 group-data-[collapsible=icon]:justify-center">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" className="hover:bg-transparent">
@@ -145,7 +144,7 @@ export function AppSidebar() {
               const items = saNavItems.filter((i) => i.group === group)
               return (
                 <SidebarGroup key={group} className="px-0 group-data-[collapsible=icon]:px-0">
-                  <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 group-data-[collapsible=icon]:hidden">
+                  <SidebarGroupLabel className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50 group-data-[collapsible=icon]:hidden">
                     {group}
                   </SidebarGroupLabel>
                   <SidebarMenu>
@@ -156,7 +155,7 @@ export function AppSidebar() {
                           onClick={() => setActiveView(item.view)}
                           tooltip={item.label}
                         >
-                          <item.icon className={`size-4 ${activeView === item.view ? 'text-amber-600 dark:text-amber-400' : ''}`} />
+                          <item.icon className={`size-4 ${activeView === item.view ? 'text-amber-400' : ''}`} />
                           <span>{item.label}</span>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
@@ -176,10 +175,10 @@ export function AppSidebar() {
                   onClick={() => setActiveView(item.view)}
                   tooltip={item.label}
                 >
-                  <item.icon className="size-4" />
+                  <item.icon className={`size-4 ${activeView === item.view ? 'text-blue-400' : ''}`} />
                   <span>{item.label}</span>
                   {item.badge && (
-                    <span className="ml-auto flex h-5 items-center rounded-md bg-emerald-100 px-1.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">
+                    <span className="ml-auto flex h-5 items-center rounded-md bg-emerald-500/20 px-1.5 text-[10px] font-semibold text-emerald-400">
                       {item.badge}
                     </span>
                   )}
@@ -191,25 +190,25 @@ export function AppSidebar() {
       </SidebarContent>
 
       {/* ─── Footer ─────────────────────────────────────── */}
-      <SidebarFooter className="border-t px-2 py-2.5 space-y-1.5 group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:py-2 group-data-[collapsible=icon]:items-center">
+      <SidebarFooter className="border-t border-sidebar-border px-2 py-2.5 space-y-1.5 group-data-[collapsible=icon]:px-1 group-data-[collapsible=icon]:py-2 group-data-[collapsible=icon]:items-center">
         {/* WC Connection Status (only for regular admin) */}
         {!isSuperAdmin && (
           <div className="flex items-center gap-2 text-xs justify-center group-data-[collapsible=icon]:justify-center">
             {wcConnected ? (
               <>
-                <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                <div className="flex items-center gap-1 text-emerald-400">
                   <Wifi className="size-3.5 shrink-0" />
                   <span className="group-data-[collapsible=icon]:hidden font-medium">Connected</span>
                 </div>
                 {lastSync && (
-                  <span className="flex items-center gap-0.5 text-muted-foreground group-data-[collapsible=icon]:hidden">
+                  <span className="flex items-center gap-0.5 text-sidebar-foreground/50 group-data-[collapsible=icon]:hidden">
                     <Clock className="size-2.5" />
                     {getLastSyncText()}
                   </span>
                 )}
               </>
             ) : (
-              <span className="flex items-center gap-1 text-amber-500">
+              <span className="flex items-center gap-1 text-amber-400">
                 <WifiOff className="size-3.5 shrink-0" />
                 <span className="group-data-[collapsible=icon]:hidden">Not Connected</span>
               </span>
@@ -220,14 +219,14 @@ export function AppSidebar() {
         {/* Super Admin Footer Badge */}
         {isSuperAdmin && (
           <div className="flex items-center gap-2 text-xs justify-center group-data-[collapsible=icon]:justify-center">
-            <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+            <div className="flex items-center gap-1 text-amber-400">
               <Shield className="size-3.5 shrink-0" />
               <span className="group-data-[collapsible=icon]:hidden font-medium">Super Admin</span>
             </div>
           </div>
         )}
 
-        <div className="flex items-center text-xs text-muted-foreground justify-center group-data-[collapsible=icon]:justify-center">
+        <div className="flex items-center text-xs text-sidebar-foreground/40 justify-center group-data-[collapsible=icon]:justify-center">
           <Activity className="size-3 shrink-0" />
           <span className="font-mono group-data-[collapsible=icon]:hidden ml-1.5">v2.4.0</span>
         </div>

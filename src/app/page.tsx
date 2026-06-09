@@ -6,6 +6,7 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/s
 import { Toaster } from '@/components/ui/sonner'
 import { AppSidebar } from '@/components/admin/sidebar'
 import { Separator } from '@/components/ui/separator'
+import { ThemeToggle } from '@/components/admin/theme-toggle'
 import { ShoppingCart, LogOut, User, Shield, BarChart3, ScrollText, HeartPulse, Cog, UserCog } from 'lucide-react'
 import {
   DropdownMenu,
@@ -126,19 +127,23 @@ export default function Home() {
     <SidebarProvider>
       <AppSidebar key={userId} />
       <SidebarInset>
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b bg-card/80 backdrop-blur-sm px-4">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <currentViewInfo.icon className={`h-4 w-4 ${isSuperAdmin ? 'text-amber-600' : ''}`} />
+            <currentViewInfo.icon className={`h-4 w-4 ${isSuperAdmin ? 'text-amber-500' : 'text-primary'}`} />
             <span>{currentViewInfo.label}</span>
           </div>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-3">
+            {/* Theme Toggle */}
+            <ThemeToggle />
+
+            {/* User Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 rounded-full px-2 py-1.5 hover:bg-accent transition-colors outline-none">
+                <button className="flex items-center gap-2 rounded-full px-2 py-1.5 hover:bg-accent transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   <Avatar className="h-7 w-7">
-                    <AvatarFallback className={`text-white text-xs font-semibold ${isSuperAdmin ? 'bg-amber-600' : 'bg-emerald-600'}`}>
+                    <AvatarFallback className={`text-white text-xs font-semibold ${isSuperAdmin ? 'bg-amber-600' : 'bg-primary'}`}>
                       {initials}
                     </AvatarFallback>
                   </Avatar>
@@ -150,11 +155,11 @@ export default function Home() {
                   <User className="mr-2 h-4 w-4" />
                   <span>{userName || 'Admin'}</span>
                   {userRole === 'super_admin' && (
-                    <span className="ml-auto text-[10px] font-bold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">OWNER</span>
+                    <span className="ml-auto text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 px-1.5 py-0.5 rounded">OWNER</span>
                   )}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut} className="text-red-600 focus:text-red-600">
+                <DropdownMenuItem onClick={handleSignOut} className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400">
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Sign Out</span>
                 </DropdownMenuItem>
@@ -165,7 +170,7 @@ export default function Home() {
         <main className="flex-1 overflow-auto p-4 md:p-6">
           {renderView()}
         </main>
-        <footer className="border-t px-6 py-3 text-center text-xs text-muted-foreground">
+        <footer className="border-t bg-card/50 px-6 py-3 text-center text-xs text-muted-foreground">
           &copy; {new Date().getFullYear()} NexCommerce &mdash; Unified Commerce Operations Platform
         </footer>
       </SidebarInset>

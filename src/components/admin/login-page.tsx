@@ -107,9 +107,9 @@ function GoogleIcon({ className }: { className?: string }) {
 function OrDivider() {
   return (
     <div className="relative flex items-center gap-3">
-      <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-      <span className="text-xs text-gray-400 dark:text-gray-500">or</span>
-      <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+      <div className="flex-1 h-px bg-border" />
+      <span className="text-xs text-muted-foreground">or</span>
+      <div className="flex-1 h-px bg-border" />
     </div>
   )
 }
@@ -588,16 +588,16 @@ export function LoginPage() {
   // ─── RENDER ─────────────────────────────────────────────────────
   // ═════════════════════════════════════════════════════════════════
 
-  const inputClass = "pl-10 h-11 rounded-lg border-[#E2E8F0] bg-[#F8FAFC] dark:border-gray-700 dark:bg-gray-900/50 text-sm focus:border-[#3B82F6] focus:ring-[#3B82F6]/20"
-  const btnPrimary = "w-full h-11 rounded-lg bg-[#3B82F6] hover:bg-[#2563EB] text-white font-medium text-[15px] shadow-md shadow-blue-500/20 transition-all"
-  const linkClass = "text-[#3B82F6] hover:text-[#2563EB] font-medium transition-colors"
+  const inputClass = "pl-10 h-11 rounded-lg border-border bg-background text-sm focus:border-primary focus:ring-primary/20"
+  const btnPrimary = "w-full h-11 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-[15px] shadow-md shadow-primary/20 transition-all"
+  const linkClass = "text-primary hover:text-primary/80 font-medium transition-colors"
 
   return (
-    <div className="min-h-screen flex p-3 sm:p-4 lg:p-[15px] bg-white dark:bg-slate-950">
+    <div className="min-h-screen flex p-3 sm:p-4 lg:p-[15px] bg-background">
       <ThemedToast toasts={toasts} onDismiss={dismissToast} />
 
       {/* ═══════ LEFT: Form Panel ═══════ */}
-      <div className="w-full lg:w-1/2 flex flex-col bg-white dark:bg-slate-950">
+      <div className="w-full lg:w-1/2 flex flex-col bg-background">
 
         {/* Logo pinned at top */}
         <div className="flex-shrink-0 flex justify-center px-6 sm:px-10 lg:px-16 pt-6 sm:pt-8 lg:pt-8 pb-2">
@@ -615,8 +615,8 @@ export function LoginPage() {
 
             {/* Loading overlay */}
             {loading && !transitioning && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-[1px] rounded-lg z-10">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
+              <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-[1px] rounded-lg z-10">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span>{loadingMessage || 'Loading...'}</span>
                 </div>
@@ -632,28 +632,28 @@ export function LoginPage() {
               {displayStep === 'login-form' && (
                 <form onSubmit={handleLoginSubmit} className="space-y-4">
                   <div>
-                    <h2 className="text-xl sm:text-2xl lg:text-[24px] font-bold text-gray-900 dark:text-gray-100 leading-tight">Welcome back</h2>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">Sign in to access your dashboard</p>
+                    <h2 className="text-xl sm:text-2xl lg:text-[24px] font-bold text-foreground leading-tight">Welcome back</h2>
+                    <p className="text-sm text-muted-foreground mt-1.5">Sign in to access your dashboard</p>
                   </div>
 
                   <FormErrorBanner message={formError} />
 
                   {/* Email */}
                   <div className="space-y-1.5">
-                    <Label htmlFor="login-email" className="text-sm font-medium text-gray-700 dark:text-gray-300">Email</Label>
+                    <Label htmlFor="login-email" className="text-sm font-medium text-foreground/70">Email</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
                       <Input id="login-email" type="email" placeholder="admin@store.com" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className={inputClass} required />
                     </div>
                   </div>
 
                   {/* Password */}
                   <div className="space-y-1.5">
-                    <Label htmlFor="login-password" className="text-sm font-medium text-gray-700 dark:text-gray-300">Password</Label>
+                    <Label htmlFor="login-password" className="text-sm font-medium text-foreground/70">Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
                       <Input id="login-password" type={showLoginPassword ? 'text' : 'password'} placeholder="Enter password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className={inputClass + ' pr-10'} required />
-                      <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                      <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
                         {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
@@ -662,10 +662,10 @@ export function LoginPage() {
                   {/* Remember Me + Forgot Password */}
                   <div className="flex items-center justify-between">
                     <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <Checkbox checked={rememberMe} onCheckedChange={(c) => setRememberMe(c === true)} className="data-[state=checked]:bg-[#3B82F6] data-[state=checked]:border-[#3B82F6] h-4 w-4" />
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Remember me</span>
+                      <Checkbox checked={rememberMe} onCheckedChange={(c) => setRememberMe(c === true)} className="data-[state=checked]:bg-primary data-[state=checked]:border-primary h-4 w-4" />
+                      <span className="text-sm text-muted-foreground">Remember me</span>
                     </label>
-                    <button type="button" onClick={goToForgotPassword} className="text-sm text-[#3B82F6] hover:text-[#2563EB] font-medium transition-colors">
+                    <button type="button" onClick={goToForgotPassword} className={linkClass + " text-sm"}>
                       Forgot Password?
                     </button>
                   </div>
@@ -678,12 +678,12 @@ export function LoginPage() {
                   <OrDivider />
 
                   {/* Google */}
-                  <button type="button" onClick={handleGoogleLogin} className="w-full flex items-center justify-center gap-2.5 h-11 rounded-lg border border-[#E5E7EB] bg-white hover:bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-gray-300 font-medium text-sm transition-colors">
+                  <button type="button" onClick={handleGoogleLogin} className="w-full flex items-center justify-center gap-2.5 h-11 rounded-lg border border-border bg-card hover:bg-accent text-foreground font-medium text-sm transition-colors">
                     <GoogleIcon className="h-5 w-5" /> Google
                   </button>
 
                   {/* Footer link */}
-                  <p className="text-center text-sm text-gray-500 dark:text-gray-400">
+                  <p className="text-center text-sm text-muted-foreground">
                     Don&apos;t have an account?{' '}
                     <button type="button" onClick={switchToSignup} className={linkClass}>Sign Up</button>
                   </p>
@@ -693,17 +693,17 @@ export function LoginPage() {
               {/* ─── LOGIN OTP ─── */}
               {displayStep === 'login-otp' && (
                 <div className="space-y-6">
-                  <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
+                  <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
                     <ArrowLeft className="h-4 w-4" /> Back
                   </button>
 
                   <div className="space-y-4">
-                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20">
-                      <ShieldCheck className="h-6 w-6 text-[#3B82F6]" />
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                      <ShieldCheck className="h-6 w-6 text-primary" />
                     </div>
                     <div className="text-center">
-                      <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Verify OTP</h2>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Code sent to <span className="font-medium text-gray-700 dark:text-gray-300">{otpSentEmail}</span></p>
+                      <h2 className="text-xl font-bold text-foreground">Verify OTP</h2>
+                      <p className="text-sm text-muted-foreground mt-1">Code sent to <span className="font-medium text-foreground/70">{otpSentEmail}</span></p>
                     </div>
                   </div>
 
@@ -727,14 +727,14 @@ export function LoginPage() {
                   {isSandboxMode && sandboxOtp && <SandboxBanner otp={sandboxOtp} detail={emailErrorDetail} />}
 
                   {loading && (
-                    <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" /> Verifying...
                     </div>
                   )}
 
                   <div className="text-center">
                     {otpCooldown > 0 ? (
-                      <p className="text-sm text-gray-500">Resend in <span className="font-medium text-[#3B82F6]">{otpCooldown}s</span></p>
+                      <p className="text-sm text-muted-foreground">Resend in <span className="font-medium text-primary">{otpCooldown}s</span></p>
                     ) : (
                       <button type="button" onClick={() => sendOtp(loginEmail, 'login')} className={`text-sm ${linkClass}`}>
                         Resend code
@@ -748,43 +748,43 @@ export function LoginPage() {
               {displayStep === 'signup-form' && (
                 <form onSubmit={handleSignupSubmit} className="space-y-4">
                   <div>
-                    <h2 className="text-xl sm:text-2xl lg:text-[24px] font-bold text-gray-900 dark:text-gray-100 leading-tight">Create account</h2>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">Get started with your free NexCommerce store</p>
+                    <h2 className="text-xl sm:text-2xl lg:text-[24px] font-bold text-foreground leading-tight">Create account</h2>
+                    <p className="text-sm text-muted-foreground mt-1.5">Get started with your free NexCommerce store</p>
                   </div>
 
                   <FormErrorBanner message={formError} />
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="signup-name" className="text-sm font-medium text-gray-700 dark:text-gray-300">Full Name</Label>
+                    <Label htmlFor="signup-name" className="text-sm font-medium text-foreground/70">Full Name</Label>
                     <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
                       <Input id="signup-name" type="text" placeholder="Your full name" value={signupName} onChange={(e) => setSignupName(e.target.value)} className={inputClass} required />
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="signup-email" className="text-sm font-medium text-gray-700 dark:text-gray-300">Email</Label>
+                    <Label htmlFor="signup-email" className="text-sm font-medium text-foreground/70">Email</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
                       <Input id="signup-email" type="email" placeholder="admin@store.com" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} className={inputClass} required />
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="signup-password" className="text-sm font-medium text-gray-700 dark:text-gray-300">Password</Label>
+                    <Label htmlFor="signup-password" className="text-sm font-medium text-foreground/70">Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
                       <Input id="signup-password" type={showSignupPassword ? 'text' : 'password'} placeholder="Min 6 characters" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} className={inputClass + ' pr-10'} required />
-                      <button type="button" onClick={() => setShowSignupPassword(!showSignupPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                      <button type="button" onClick={() => setShowSignupPassword(!showSignupPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
                         {showSignupPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="signup-confirm" className="text-sm font-medium text-gray-700 dark:text-gray-300">Confirm Password</Label>
+                    <Label htmlFor="signup-confirm" className="text-sm font-medium text-foreground/70">Confirm Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
                       <Input id="signup-confirm" type="password" placeholder="Confirm password" value={signupConfirmPassword} onChange={(e) => setSignupConfirmPassword(e.target.value)} className={inputClass} required />
                     </div>
                   </div>
@@ -795,11 +795,11 @@ export function LoginPage() {
 
                   <OrDivider />
 
-                  <button type="button" onClick={handleGoogleLogin} className="w-full flex items-center justify-center gap-2.5 h-11 rounded-lg border border-[#E5E7EB] bg-white hover:bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-gray-300 font-medium text-sm transition-colors">
+                  <button type="button" onClick={handleGoogleLogin} className="w-full flex items-center justify-center gap-2.5 h-11 rounded-lg border border-border bg-card hover:bg-accent text-foreground font-medium text-sm transition-colors">
                     <GoogleIcon className="h-5 w-5" /> Google
                   </button>
 
-                  <p className="text-center text-sm text-gray-500 dark:text-gray-400">
+                  <p className="text-center text-sm text-muted-foreground">
                     Already have an account?{' '}
                     <button type="button" onClick={switchToLogin} className={linkClass}>Sign In</button>
                   </p>
@@ -809,17 +809,17 @@ export function LoginPage() {
               {/* ─── SIGNUP OTP ─── */}
               {displayStep === 'signup-otp' && (
                 <div className="space-y-6">
-                  <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
+                  <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-muted-foreground/60 dark:hover:text-gray-200 transition-colors">
                     <ArrowLeft className="h-4 w-4" /> Back
                   </button>
 
                   <div className="space-y-4">
-                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                       <ShieldCheck className="h-6 w-6 text-[#3B82F6]" />
                     </div>
                     <div className="text-center">
-                      <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Verify Email</h2>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Code sent to <span className="font-medium text-gray-700 dark:text-gray-300">{otpSentEmail}</span></p>
+                      <h2 className="text-xl font-bold text-foreground">Verify Email</h2>
+                      <p className="text-sm text-muted-foreground mt-1">Code sent to <span className="font-medium text-foreground/70">{otpSentEmail}</span></p>
                     </div>
                   </div>
 
@@ -863,17 +863,17 @@ export function LoginPage() {
               {/* ─── FORGOT EMAIL ─── */}
               {displayStep === 'forgot-email' && (
                 <form onSubmit={handleForgotEmailSubmit} className="space-y-4">
-                  <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
+                  <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-muted-foreground/60 dark:hover:text-gray-200 transition-colors">
                     <ArrowLeft className="h-4 w-4" /> Back
                   </button>
 
                   <div className="space-y-4">
-                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                       <KeyRound className="h-6 w-6 text-[#3B82F6]" />
                     </div>
                     <div className="text-center">
-                      <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Forgot Password</h2>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Enter your email and we&apos;ll send you a code to reset your password</p>
+                      <h2 className="text-xl font-bold text-foreground">Forgot Password</h2>
+                      <p className="text-sm text-muted-foreground mt-1">Enter your email and we&apos;ll send you a code to reset your password</p>
                     </div>
                   </div>
 
@@ -881,9 +881,9 @@ export function LoginPage() {
                   {isSandboxMode && sandboxOtp && <SandboxBanner otp={sandboxOtp} detail={emailErrorDetail} />}
 
                   <div className="space-y-1.5">
-                    <Label htmlFor="forgot-email" className="text-sm font-medium text-gray-700 dark:text-gray-300">Email</Label>
+                    <Label htmlFor="forgot-email" className="text-sm font-medium text-foreground/70">Email</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
                       <Input id="forgot-email" type="email" placeholder="admin@store.com" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} className={inputClass} required />
                     </div>
                   </div>
@@ -897,17 +897,17 @@ export function LoginPage() {
               {/* ─── FORGOT OTP ─── */}
               {displayStep === 'forgot-otp' && (
                 <div className="space-y-6">
-                  <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
+                  <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-muted-foreground/60 dark:hover:text-gray-200 transition-colors">
                     <ArrowLeft className="h-4 w-4" /> Back
                   </button>
 
                   <div className="space-y-4">
-                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                       <ShieldCheck className="h-6 w-6 text-[#3B82F6]" />
                     </div>
                     <div className="text-center">
-                      <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Verify Code</h2>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Code sent to <span className="font-medium text-gray-700 dark:text-gray-300">{otpSentEmail}</span></p>
+                      <h2 className="text-xl font-bold text-foreground">Verify Code</h2>
+                      <p className="text-sm text-muted-foreground mt-1">Code sent to <span className="font-medium text-foreground/70">{otpSentEmail}</span></p>
                     </div>
                   </div>
 
@@ -945,17 +945,17 @@ export function LoginPage() {
               {/* ─── FORGOT RESET ─── */}
               {displayStep === 'forgot-reset' && (
                 <form onSubmit={handleForgotResetSubmit} className="space-y-4">
-                  <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
+                  <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-muted-foreground/60 dark:hover:text-gray-200 transition-colors">
                     <ArrowLeft className="h-4 w-4" /> Back
                   </button>
 
                   <div className="space-y-4">
-                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
                       <Lock className="h-6 w-6 text-[#3B82F6]" />
                     </div>
                     <div className="text-center">
-                      <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Reset Password</h2>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Create a new password for your account</p>
+                      <h2 className="text-xl font-bold text-foreground">Reset Password</h2>
+                      <p className="text-sm text-muted-foreground mt-1">Create a new password for your account</p>
                     </div>
                   </div>
 
@@ -963,30 +963,30 @@ export function LoginPage() {
 
                   {/* New Password */}
                   <div className="space-y-1.5">
-                    <Label htmlFor="forgot-new-password" className="text-sm font-medium text-gray-700 dark:text-gray-300">New Password</Label>
+                    <Label htmlFor="forgot-new-password" className="text-sm font-medium text-foreground/70">New Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
                       <Input id="forgot-new-password" type={showForgotNewPassword ? 'text' : 'password'} placeholder="Min 6 characters" value={forgotNewPassword} onChange={(e) => setForgotNewPassword(e.target.value)} className={inputClass + ' pr-10'} required />
-                      <button type="button" onClick={() => setShowForgotNewPassword(!showForgotNewPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                      <button type="button" onClick={() => setShowForgotNewPassword(!showForgotNewPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
                         {showForgotNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
                     {/* Password strength indicator */}
                     {pwdStrength.score > 0 && (
                       <div className="space-y-1.5">
-                        <div className="h-1 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                        <div className="h-1 w-full rounded-full bg-border overflow-hidden">
                           <div className={cn("h-full rounded-full transition-all duration-300", pwdStrength.color, pwdStrength.width)} />
                         </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{pwdStrength.label}</p>
+                        <p className="text-xs text-muted-foreground">{pwdStrength.label}</p>
                       </div>
                     )}
                   </div>
 
                   {/* Confirm Password */}
                   <div className="space-y-1.5">
-                    <Label htmlFor="forgot-confirm-password" className="text-sm font-medium text-gray-700 dark:text-gray-300">Confirm Password</Label>
+                    <Label htmlFor="forgot-confirm-password" className="text-sm font-medium text-foreground/70">Confirm Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
                       <Input id="forgot-confirm-password" type="password" placeholder="Confirm new password" value={forgotConfirmPassword} onChange={(e) => setForgotConfirmPassword(e.target.value)} className={inputClass} required />
                     </div>
                     {/* Inline validation for confirm password */}
@@ -1009,7 +1009,7 @@ export function LoginPage() {
 
         {/* Copyright - always pinned to bottom */}
         <div className="flex-shrink-0 text-center pb-4 sm:pb-5 lg:pb-6">
-          <p className="text-xs text-gray-400 dark:text-gray-500">
+          <p className="text-xs text-muted-foreground/60">
             &copy; {new Date().getFullYear()} NexCommerce. All rights reserved.
           </p>
         </div>
