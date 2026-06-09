@@ -378,13 +378,16 @@ export function LoginPage() {
       <ThemedToast toasts={toasts} onDismiss={dismissToast} />
 
       {/* ═══════ LEFT: Form Panel ═══════ */}
-      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center px-8 sm:px-12 lg:px-16 bg-white dark:bg-slate-950 relative">
-        <div className="w-full max-w-[400px]">
+      <div className="w-full lg:w-1/2 flex flex-col bg-white dark:bg-slate-950 relative">
 
-          {/* Logo */}
-          <div className="mb-10">
-            <img src="/logo.png" alt="NexCommerce" className="h-9 w-auto object-contain" />
-          </div>
+        {/* Logo pinned at top */}
+        <div className="flex-shrink-0 px-8 sm:px-12 lg:px-16 pt-8 pb-4">
+          <img src="/logo.png" alt="NexCommerce" className="h-9 w-auto object-contain" />
+        </div>
+
+        {/* Form centered in remaining space */}
+        <div className="flex-1 flex flex-col items-center justify-center px-8 sm:px-12 lg:px-16">
+        <div className="w-full max-w-[400px]">
 
           {/* ─── LOGIN FORM ─── */}
           {step === 'login-form' && (
@@ -617,6 +620,7 @@ export function LoginPage() {
           <p className="text-xs text-gray-400 dark:text-gray-500 text-center pb-2 lg:absolute lg:bottom-3 lg:left-0 lg:right-0">
             &copy; {new Date().getFullYear()} NexCommerce. All rights reserved.
           </p>
+        </div>
         </div>
       </div>
 
