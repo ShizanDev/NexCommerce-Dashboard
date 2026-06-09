@@ -31,8 +31,8 @@ async function handleSendOtp(email: string, purpose: string) {
     return NextResponse.json({ success: false, error: 'Valid email is required' }, { status: 400 })
   }
 
-  if (purpose !== 'signup' && purpose !== 'login') {
-    return NextResponse.json({ success: false, error: 'Purpose must be "signup" or "login"' }, { status: 400 })
+  if (!['signup', 'login', 'reset_password'].includes(purpose)) {
+    return NextResponse.json({ success: false, error: 'Invalid purpose' }, { status: 400 })
   }
 
   // ── Pre-flight checks ──

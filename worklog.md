@@ -393,3 +393,35 @@ Stage Summary:
 - Both sidebar header (logo container) and main header (Platform Overview) are now exactly h-14 (56px)
 - Their bottom borders now align perfectly at the same y-coordinate
 - Collapsed state also uses the same h-14 height
+
+---
+Task ID: forgot-password-flow
+Agent: Main Agent
+Task: Add Forgot Password flow + smooth animated transitions to login page
+
+Work Log:
+- Read existing login-page.tsx to understand current structure (login-form → login-otp, signup-form → signup-otp)
+- Extended AuthStep type with 3 new steps: 'forgot-email', 'forgot-otp', 'forgot-reset'
+- Added forgot password state variables: forgotEmail, forgotOtp, forgotNewPassword, forgotConfirmPassword, showForgotNewPassword, forgotFormError
+- Added transition system: transitioning, displayStep, loadingMessage states + useEffect for fade-out/fade-in (200ms delay)
+- All 7 auth steps wrapped in a single transition div with CSS-based opacity/translate/scale animation
+- Added loading overlay with backdrop-blur when loading && !transitioning
+- Created password strength indicator function: 4-level scoring (Weak/Fair/Good/Strong) with colored progress bar
+- Added "Forgot Password?" link next to Remember Me checkbox on login form
+- Built 3 new forgot password steps:
+  1. forgot-email: KeyRound icon, email input, calls POST /api/auth/forgot-password
+  2. forgot-otp: ShieldCheck icon, 6-digit OTP, resend with cooldown timer, calls POST /api/auth/forgot-password
+  3. forgot-reset: Lock icon, new password (with strength indicator + show/hide), confirm password (with inline match validation), calls POST /api/auth/reset-password
+- Added navigation functions: goToForgotPassword(), goBackToLogin(), updated goBack() for new steps
+- All error clearing handled consistently across navigation functions
+- Existing login/signup flows completely unchanged
+- Fixed bug: resendForgotOtp referenced undefined errMap — added inline error map
+- ESLint passes clean
+
+Stage Summary:
+- Forgot password flow fully implemented: email → OTP verification → new password reset
+- Smooth CSS transitions between all auth steps (no framer-motion)
+- Loading overlay with contextual messages per action
+- Password strength indicator with 4 levels and colored progress bar
+- Inline validation for password match on reset step
+- All existing login/signup flows preserved unchanged

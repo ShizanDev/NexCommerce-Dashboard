@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   Mail, Lock, User, Eye, EyeOff, Loader2, ArrowLeft, ShieldCheck,
-  AlertCircle, CheckCircle2, XCircle, Info,
+  AlertCircle, CheckCircle2, XCircle, Info, KeyRound,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -11,16 +11,38 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from '@/components/ui/input-otp'
 import { useAppStore } from '@/stores/app-store'
+import { cn } from '@/lib/utils'
 
 // ─── Types ──────────────────────────────────────────────────────
 
-type AuthStep = 'login-form' | 'login-otp' | 'signup-form' | 'signup-otp'
+type AuthStep = 'login-form' | 'login-otp' | 'signup-form' | 'signup-otp' | 'forgot-email' | 'forgot-otp' | 'forgot-reset'
 
 interface ToastMessage {
   type: 'success' | 'error' | 'warning' | 'info'
   title: string
   description?: string
   id: number
+}
+
+// ─── Password strength ────────────────────────────────────────
+
+function getPasswordStrength(password: string): { score: number; label: string; color: string; width: string } {
+  if (!password) return { score: 0, label: '', color: '', width: 'w-0' }
+  let score = 0
+  if (password.length >= 6) score++
+  if (password.length >= 6 && /\d/.test(password)) score++
+  if (password.length >= 6 && /\d/.test(password) && /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/~`]/.test(password)) score++
+  if (password.length < 6) score = 1
+
+  const map: Record<number, { label: string; color: string; width: string }> = {
+    0: { label: '', color: '', width: 'w-0' },
+    1: { label: 'Weak', color: 'bg-red-500', width: 'w-1/4' },
+    2: { label: 'Fair', color: 'bg-orange-500', width: 'w-2/4' },
+    3: { label: 'Good', color: 'bg-blue-500', width: 'w-3/4' },
+    4: { label: 'Strong', color: 'bg-green-500', width: 'w-full' },
+  }
+  const m = map[score] || map[1]
+  return { score, ...m }
 }
 
 // ─── Custom Toast Component ──────────────────────────────────────
@@ -127,8 +149,24 @@ function SandboxBanner({ otp, detail }: { otp: string; detail?: string }) {
 export function LoginPage() {
   const [step, setStep] = useState<AuthStep>('login-form')
   const [loading, setLoading] = useState(false)
+  const [loadingMessage, setLoadingMessage] = useState('')
   const [formError, setFormError] = useState('')
   const { setLoggedIn } = useAppStore()
+
+  // Transition system
+  const [transitioning, setTransitioning] = useState(false)
+  const [displayStep, setDisplayStep] = useState<AuthStep>(step)
+
+  useEffect(() => {
+    if (step !== displayStep) {
+      setTransitioning(true)
+      const timer = setTimeout(() => {
+        setDisplayStep(step)
+        setTransitioning(false)
+      }, 200)
+      return () => clearTimeout(timer)
+    }
+  }, [step, displayStep])
 
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const toastIdRef = useRef(0)
@@ -155,6 +193,14 @@ export function LoginPage() {
   const [sandboxOtp, setSandboxOtp] = useState('')
   const [emailErrorDetail, setEmailErrorDetail] = useState('')
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Forgot password
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotOtp, setForgotOtp] = useState('')
+  const [forgotNewPassword, setForgotNewPassword] = useState('')
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState('')
+  const [showForgotNewPassword, setShowForgotNewPassword] = useState(false)
+  const [forgotFormError, setForgotFormError] = useState('')
 
   // ─── Toast helpers ──────────────────────────────────────────────
 
@@ -208,6 +254,7 @@ export function LoginPage() {
 
   async function sendOtp(email: string, purpose: 'signup' | 'login') {
     setLoading(true)
+    setLoadingMessage('Sending code...')
     setEmailErrorDetail('')
     try {
       const res = await fetch('/api/auth/otp', {
@@ -246,6 +293,143 @@ export function LoginPage() {
       return false
     } finally {
       setLoading(false)
+      setLoadingMessage('')
+    }
+  }
+
+  // ─── Forgot Password: Send Reset Code ──────────────────────────
+
+  async function handleForgotEmailSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setForgotFormError('')
+    setLoading(true)
+    setLoadingMessage('Sending reset code...')
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setOtpSentEmail(forgotEmail)
+        setOtpCooldown(60)
+        if (data.sandboxMode && data.otp) {
+          setIsSandboxMode(true)
+          setSandboxOtp(data.otp)
+          setEmailErrorDetail(data.emailErrorDetail || '')
+        } else {
+          setIsSandboxMode(false)
+          setSandboxOtp('')
+          setEmailErrorDetail('')
+          showToast('success', 'Reset code sent', `Check ${forgotEmail}`, 6000)
+        }
+        setStep('forgot-otp')
+      } else {
+        const errMap: Record<number, { title: string; desc: string }> = {
+          429: { title: 'Too many requests', desc: data.error || 'Wait before requesting again.' },
+          404: { title: 'Not found', desc: 'No account found with this email.' },
+        }
+        const err = errMap[res.status] || { title: 'Failed to send code', desc: data.error || 'Please try again.' }
+        showToast('error', err.title, err.desc)
+      }
+    } catch {
+      showToast('error', 'Network error', 'Please try again.')
+    } finally {
+      setLoading(false)
+      setLoadingMessage('')
+    }
+  }
+
+  // ─── Forgot Password: Resend Reset Code ─────────────────────────
+
+  async function resendForgotOtp() {
+    setLoading(true)
+    setLoadingMessage('Sending reset code...')
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setOtpCooldown(60)
+        if (data.sandboxMode && data.otp) {
+          setIsSandboxMode(true)
+          setSandboxOtp(data.otp)
+          setEmailErrorDetail(data.emailErrorDetail || '')
+        } else {
+          setIsSandboxMode(false)
+          setSandboxOtp('')
+          setEmailErrorDetail('')
+          showToast('success', 'Reset code resent', `Check ${forgotEmail}`, 6000)
+        }
+      } else {
+        const errMap: Record<number, { title: string; desc: string }> = {
+          429: { title: 'Too many requests', desc: data.error || 'Wait before requesting again.' },
+          404: { title: 'Not found', desc: 'No account found with this email.' },
+        }
+        const err = errMap[res.status] || { title: 'Failed to resend', desc: data.error || 'Please try again.' }
+        showToast('error', err.title, err.desc)
+      }
+    } catch {
+      showToast('error', 'Network error', 'Please try again.')
+    } finally {
+      setLoading(false)
+      setLoadingMessage('')
+    }
+  }
+
+  // ─── Forgot Password: OTP Complete → go to reset ──────────────
+
+  function handleForgotOtpComplete() {
+    if (forgotOtp.length !== 6) return
+    setForgotFormError('')
+    setStep('forgot-reset')
+  }
+
+  // ─── Forgot Password: Reset Password ──────────────────────────
+
+  async function handleForgotResetSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setForgotFormError('')
+    if (forgotNewPassword.length < 6) {
+      setForgotFormError('Password must be at least 6 characters.')
+      return
+    }
+    if (forgotNewPassword !== forgotConfirmPassword) {
+      setForgotFormError('Passwords do not match')
+      return
+    }
+    setLoading(true)
+    setLoadingMessage('Updating password...')
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail, otp: forgotOtp, newPassword: forgotNewPassword }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        showToast('success', 'Password reset successful!', 'Please sign in with your new password.', 6000)
+        // Brief success state then redirect to login
+        setTimeout(() => {
+          goBackToLogin()
+        }, 500)
+      } else {
+        const errMap: Record<number, { title: string; desc: string }> = {
+          400: { title: 'Invalid request', desc: data.error || 'Please check your inputs.' },
+          429: { title: 'Too many requests', desc: 'Wait before trying again.' },
+        }
+        const err = errMap[res.status] || { title: 'Reset failed', desc: data.error || 'Please try again.' }
+        showToast('error', err.title, err.desc)
+      }
+    } catch {
+      showToast('error', 'Network error', 'Please try again.')
+    } finally {
+      setLoading(false)
+      setLoadingMessage('')
     }
   }
 
@@ -255,6 +439,7 @@ export function LoginPage() {
     e.preventDefault()
     setFormError('')
     setLoading(true)
+    setLoadingMessage('Verifying credentials...')
     try {
       const checkRes = await fetch('/api/auth/check', {
         method: 'POST',
@@ -265,14 +450,17 @@ export function LoginPage() {
       if (!checkData.success) {
         setFormError(checkData.error || 'Invalid credentials.')
         setLoading(false)
+        setLoadingMessage('')
         return
       }
     } catch {
       setFormError('Network error.')
       setLoading(false)
+      setLoadingMessage('')
       return
     }
     setLoading(false)
+    setLoadingMessage('')
     const sent = await sendOtp(loginEmail, 'login')
     if (sent) setStep('login-otp')
   }
@@ -282,6 +470,7 @@ export function LoginPage() {
   async function handleLoginOtpComplete() {
     if (loginOtp.length !== 6) return
     setLoading(true)
+    setLoadingMessage('Verifying code...')
     setFormError('')
     try {
       const res = await fetch('/api/auth/login', {
@@ -296,6 +485,7 @@ export function LoginPage() {
       setFormError('Network error.')
     } finally {
       setLoading(false)
+      setLoadingMessage('')
     }
   }
 
@@ -307,7 +497,13 @@ export function LoginPage() {
     if (signupName.trim().length < 2) { setFormError('Enter your full name.'); return }
     if (signupPassword.length < 6) { setFormError('Password must be at least 6 characters.'); return }
     if (signupPassword !== signupConfirmPassword) { setFormError('Passwords do not match.'); return }
+    setLoading(true)
+    setLoadingMessage('Creating account...')
     const sent = await sendOtp(signupEmail, 'signup')
+    if (!sent) {
+      setLoading(false)
+      setLoadingMessage('')
+    }
     if (sent) setStep('signup-otp')
   }
 
@@ -316,6 +512,7 @@ export function LoginPage() {
   async function handleSignupOtpComplete() {
     if (signupOtp.length !== 6) return
     setLoading(true)
+    setLoadingMessage('Creating account...')
     setFormError('')
     try {
       const res = await fetch('/api/auth/setup', {
@@ -335,6 +532,7 @@ export function LoginPage() {
       setFormError('Network error.')
     } finally {
       setLoading(false)
+      setLoadingMessage('')
     }
   }
 
@@ -347,10 +545,13 @@ export function LoginPage() {
   // ─── Navigation ────────────────────────────────────────────────
 
   const goBack = () => {
-    setIsSandboxMode(false); setSandboxOtp(''); setEmailErrorDetail(''); setFormError('')
+    setIsSandboxMode(false); setSandboxOtp(''); setEmailErrorDetail(''); setFormError(''); setForgotFormError('')
     if (step === 'signup-form') setStep('login-form')
     else if (step === 'signup-otp') setStep('signup-form')
     else if (step === 'login-otp') setStep('login-form')
+    else if (step === 'forgot-email') setStep('login-form')
+    else if (step === 'forgot-otp') setStep('forgot-email')
+    else if (step === 'forgot-reset') setStep('forgot-email')
   }
 
   function switchToSignup() {
@@ -364,6 +565,23 @@ export function LoginPage() {
     setSignupName(''); setSignupEmail(''); setSignupPassword(''); setSignupConfirmPassword(''); setSignupOtp('')
     setIsSandboxMode(false); setSandboxOtp(''); setFormError('')
   }
+
+  function goToForgotPassword() {
+    setStep('forgot-email')
+    setLoginEmail(''); setLoginPassword(''); setLoginOtp('')
+    setIsSandboxMode(false); setSandboxOtp(''); setFormError('')
+    setForgotEmail(loginEmail)
+  }
+
+  function goBackToLogin() {
+    setStep('login-form')
+    setForgotEmail(''); setForgotOtp(''); setForgotNewPassword(''); setForgotConfirmPassword('')
+    setIsSandboxMode(false); setSandboxOtp(''); setFormError(''); setForgotFormError('')
+  }
+
+  // ─── Password strength for forgot reset ──────────────────────
+
+  const pwdStrength = getPasswordStrength(forgotNewPassword)
 
   // ═════════════════════════════════════════════════════════════════
   // ─── RENDER ─────────────────────────────────────────────────────
@@ -391,234 +609,399 @@ export function LoginPage() {
         <div className="flex-1 flex flex-col items-center justify-center px-6 sm:px-10 lg:px-16 overflow-y-auto">
         <div className="w-full max-w-[400px]">
 
-          {/* ─── LOGIN FORM ─── */}
-          {step === 'login-form' && (
-            <form onSubmit={handleLoginSubmit} className="space-y-4">
-              <div>
-                <h2 className="text-xl sm:text-2xl lg:text-[24px] font-bold text-gray-900 dark:text-gray-100 leading-tight">Welcome back</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">Sign in to access your dashboard</p>
-              </div>
+          {/* ═══════ Transition wrapper ═══════ */}
+          <div className="relative overflow-hidden">
 
-              <FormErrorBanner message={formError} />
-
-              {/* Email */}
-              <div className="space-y-1.5">
-                <Label htmlFor="login-email" className="text-sm font-medium text-gray-700 dark:text-gray-300">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input id="login-email" type="email" placeholder="admin@store.com" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className={inputClass} required />
+            {/* Loading overlay */}
+            {loading && !transitioning && (
+              <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-[1px] rounded-lg z-10">
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>{loadingMessage || 'Loading...'}</span>
                 </div>
               </div>
+            )}
 
-              {/* Password */}
-              <div className="space-y-1.5">
-                <Label htmlFor="login-password" className="text-sm font-medium text-gray-700 dark:text-gray-300">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input id="login-password" type={showLoginPassword ? 'text' : 'password'} placeholder="Enter password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className={inputClass + ' pr-10'} required />
-                  <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                    {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            <div className={cn(
+              "transition-all duration-200 ease-in-out",
+              transitioning ? "opacity-0 translate-y-2 scale-[0.98]" : "opacity-100 translate-y-0 scale-100"
+            )}>
+
+              {/* ─── LOGIN FORM ─── */}
+              {displayStep === 'login-form' && (
+                <form onSubmit={handleLoginSubmit} className="space-y-4">
+                  <div>
+                    <h2 className="text-xl sm:text-2xl lg:text-[24px] font-bold text-gray-900 dark:text-gray-100 leading-tight">Welcome back</h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">Sign in to access your dashboard</p>
+                  </div>
+
+                  <FormErrorBanner message={formError} />
+
+                  {/* Email */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="login-email" className="text-sm font-medium text-gray-700 dark:text-gray-300">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input id="login-email" type="email" placeholder="admin@store.com" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} className={inputClass} required />
+                    </div>
+                  </div>
+
+                  {/* Password */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="login-password" className="text-sm font-medium text-gray-700 dark:text-gray-300">Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input id="login-password" type={showLoginPassword ? 'text' : 'password'} placeholder="Enter password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className={inputClass + ' pr-10'} required />
+                      <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                        {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Remember Me + Forgot Password */}
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <Checkbox checked={rememberMe} onCheckedChange={(c) => setRememberMe(c === true)} className="data-[state=checked]:bg-[#3B82F6] data-[state=checked]:border-[#3B82F6] h-4 w-4" />
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Remember me</span>
+                    </label>
+                    <button type="button" onClick={goToForgotPassword} className="text-sm text-[#3B82F6] hover:text-[#2563EB] font-medium transition-colors">
+                      Forgot Password?
+                    </button>
+                  </div>
+
+                  {/* Submit */}
+                  <Button type="submit" className={btnPrimary} disabled={loading}>
+                    {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying...</> : 'Sign In'}
+                  </Button>
+
+                  <OrDivider />
+
+                  {/* Google */}
+                  <button type="button" onClick={handleGoogleLogin} className="w-full flex items-center justify-center gap-2.5 h-11 rounded-lg border border-[#E5E7EB] bg-white hover:bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-gray-300 font-medium text-sm transition-colors">
+                    <GoogleIcon className="h-5 w-5" /> Google
                   </button>
-                </div>
-              </div>
 
-              {/* Remember Me */}
-              <div className="flex items-center">
-                <label className="flex items-center gap-2 cursor-pointer select-none">
-                  <Checkbox checked={rememberMe} onCheckedChange={(c) => setRememberMe(c === true)} className="data-[state=checked]:bg-[#3B82F6] data-[state=checked]:border-[#3B82F6] h-4 w-4" />
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Remember me</span>
-                </label>
-              </div>
+                  {/* Footer link */}
+                  <p className="text-center text-sm text-gray-500 dark:text-gray-400">
+                    Don&apos;t have an account?{' '}
+                    <button type="button" onClick={switchToSignup} className={linkClass}>Sign Up</button>
+                  </p>
+                </form>
+              )}
 
-              {/* Submit */}
-              <Button type="submit" className={btnPrimary} disabled={loading}>
-                {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Verifying...</> : 'Sign In'}
-              </Button>
+              {/* ─── LOGIN OTP ─── */}
+              {displayStep === 'login-otp' && (
+                <div className="space-y-6">
+                  <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
+                    <ArrowLeft className="h-4 w-4" /> Back
+                  </button>
 
-              <OrDivider />
+                  <div className="space-y-4">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20">
+                      <ShieldCheck className="h-6 w-6 text-[#3B82F6]" />
+                    </div>
+                    <div className="text-center">
+                      <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Verify OTP</h2>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Code sent to <span className="font-medium text-gray-700 dark:text-gray-300">{otpSentEmail}</span></p>
+                    </div>
+                  </div>
 
-              {/* Google */}
-              <button type="button" onClick={handleGoogleLogin} className="w-full flex items-center justify-center gap-2.5 h-11 rounded-lg border border-[#E5E7EB] bg-white hover:bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-gray-300 font-medium text-sm transition-colors">
-                <GoogleIcon className="h-5 w-5" /> Google
-              </button>
+                  <div className="flex justify-center">
+                    <InputOTP maxLength={6} value={loginOtp} onChange={setLoginOtp} onComplete={handleLoginOtpComplete}>
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} />
+                        <InputOTPSlot index={1} />
+                        <InputOTPSlot index={2} />
+                      </InputOTPGroup>
+                      <InputOTPSeparator />
+                      <InputOTPGroup>
+                        <InputOTPSlot index={3} />
+                        <InputOTPSlot index={4} />
+                        <InputOTPSlot index={5} />
+                      </InputOTPGroup>
+                    </InputOTP>
+                  </div>
 
-              {/* Footer link */}
-              <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-                Don&apos;t have an account?{' '}
-                <button type="button" onClick={switchToSignup} className={linkClass}>Sign Up</button>
-              </p>
-            </form>
-          )}
+                  <FormErrorBanner message={formError} />
+                  {isSandboxMode && sandboxOtp && <SandboxBanner otp={sandboxOtp} detail={emailErrorDetail} />}
 
-          {/* ─── LOGIN OTP ─── */}
-          {step === 'login-otp' && (
-            <div className="space-y-6">
-              <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
-                <ArrowLeft className="h-4 w-4" /> Back
-              </button>
+                  {loading && (
+                    <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Verifying...
+                    </div>
+                  )}
 
-              <div className="space-y-4">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20">
-                  <ShieldCheck className="h-6 w-6 text-[#3B82F6]" />
-                </div>
-                <div className="text-center">
-                  <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Verify OTP</h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Code sent to <span className="font-medium text-gray-700 dark:text-gray-300">{otpSentEmail}</span></p>
-                </div>
-              </div>
-
-              <div className="flex justify-center">
-                <InputOTP maxLength={6} value={loginOtp} onChange={setLoginOtp} onComplete={handleLoginOtpComplete}>
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} />
-                    <InputOTPSlot index={1} />
-                    <InputOTPSlot index={2} />
-                  </InputOTPGroup>
-                  <InputOTPSeparator />
-                  <InputOTPGroup>
-                    <InputOTPSlot index={3} />
-                    <InputOTPSlot index={4} />
-                    <InputOTPSlot index={5} />
-                  </InputOTPGroup>
-                </InputOTP>
-              </div>
-
-              <FormErrorBanner message={formError} />
-              {isSandboxMode && sandboxOtp && <SandboxBanner otp={sandboxOtp} detail={emailErrorDetail} />}
-
-              {loading && (
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Verifying...
+                  <div className="text-center">
+                    {otpCooldown > 0 ? (
+                      <p className="text-sm text-gray-500">Resend in <span className="font-medium text-[#3B82F6]">{otpCooldown}s</span></p>
+                    ) : (
+                      <button type="button" onClick={() => sendOtp(loginEmail, 'login')} className={`text-sm ${linkClass}`}>
+                        Resend code
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 
-              <div className="text-center">
-                {otpCooldown > 0 ? (
-                  <p className="text-sm text-gray-500">Resend in <span className="font-medium text-[#3B82F6]">{otpCooldown}s</span></p>
-                ) : (
-                  <button type="button" onClick={() => sendOtp(loginEmail, 'login')} className={`text-sm ${linkClass}`}>
-                    Resend code
+              {/* ─── SIGNUP FORM ─── */}
+              {displayStep === 'signup-form' && (
+                <form onSubmit={handleSignupSubmit} className="space-y-4">
+                  <div>
+                    <h2 className="text-xl sm:text-2xl lg:text-[24px] font-bold text-gray-900 dark:text-gray-100 leading-tight">Create account</h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">Get started with your free NexCommerce store</p>
+                  </div>
+
+                  <FormErrorBanner message={formError} />
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="signup-name" className="text-sm font-medium text-gray-700 dark:text-gray-300">Full Name</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input id="signup-name" type="text" placeholder="Your full name" value={signupName} onChange={(e) => setSignupName(e.target.value)} className={inputClass} required />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="signup-email" className="text-sm font-medium text-gray-700 dark:text-gray-300">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input id="signup-email" type="email" placeholder="admin@store.com" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} className={inputClass} required />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="signup-password" className="text-sm font-medium text-gray-700 dark:text-gray-300">Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input id="signup-password" type={showSignupPassword ? 'text' : 'password'} placeholder="Min 6 characters" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} className={inputClass + ' pr-10'} required />
+                      <button type="button" onClick={() => setShowSignupPassword(!showSignupPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                        {showSignupPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="signup-confirm" className="text-sm font-medium text-gray-700 dark:text-gray-300">Confirm Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input id="signup-confirm" type="password" placeholder="Confirm password" value={signupConfirmPassword} onChange={(e) => setSignupConfirmPassword(e.target.value)} className={inputClass} required />
+                    </div>
+                  </div>
+
+                  <Button type="submit" className={btnPrimary} disabled={loading}>
+                    {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending OTP...</> : 'Sign Up'}
+                  </Button>
+
+                  <OrDivider />
+
+                  <button type="button" onClick={handleGoogleLogin} className="w-full flex items-center justify-center gap-2.5 h-11 rounded-lg border border-[#E5E7EB] bg-white hover:bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-gray-300 font-medium text-sm transition-colors">
+                    <GoogleIcon className="h-5 w-5" /> Google
                   </button>
-                )}
-              </div>
-            </div>
-          )}
 
-          {/* ─── SIGNUP FORM ─── */}
-          {step === 'signup-form' && (
-            <form onSubmit={handleSignupSubmit} className="space-y-4">
-              <div>
-                <h2 className="text-xl sm:text-2xl lg:text-[24px] font-bold text-gray-900 dark:text-gray-100 leading-tight">Create account</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">Get started with your free NexCommerce store</p>
-              </div>
+                  <p className="text-center text-sm text-gray-500 dark:text-gray-400">
+                    Already have an account?{' '}
+                    <button type="button" onClick={switchToLogin} className={linkClass}>Sign In</button>
+                  </p>
+                </form>
+              )}
 
-              <FormErrorBanner message={formError} />
-
-              <div className="space-y-1.5">
-                <Label htmlFor="signup-name" className="text-sm font-medium text-gray-700 dark:text-gray-300">Full Name</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input id="signup-name" type="text" placeholder="Your full name" value={signupName} onChange={(e) => setSignupName(e.target.value)} className={inputClass} required />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="signup-email" className="text-sm font-medium text-gray-700 dark:text-gray-300">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input id="signup-email" type="email" placeholder="admin@store.com" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} className={inputClass} required />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="signup-password" className="text-sm font-medium text-gray-700 dark:text-gray-300">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input id="signup-password" type={showSignupPassword ? 'text' : 'password'} placeholder="Min 6 characters" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} className={inputClass + ' pr-10'} required />
-                  <button type="button" onClick={() => setShowSignupPassword(!showSignupPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                    {showSignupPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              {/* ─── SIGNUP OTP ─── */}
+              {displayStep === 'signup-otp' && (
+                <div className="space-y-6">
+                  <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
+                    <ArrowLeft className="h-4 w-4" /> Back
                   </button>
-                </div>
-              </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="signup-confirm" className="text-sm font-medium text-gray-700 dark:text-gray-300">Confirm Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input id="signup-confirm" type="password" placeholder="Confirm password" value={signupConfirmPassword} onChange={(e) => setSignupConfirmPassword(e.target.value)} className={inputClass} required />
-                </div>
-              </div>
+                  <div className="space-y-4">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20">
+                      <ShieldCheck className="h-6 w-6 text-[#3B82F6]" />
+                    </div>
+                    <div className="text-center">
+                      <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Verify Email</h2>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Code sent to <span className="font-medium text-gray-700 dark:text-gray-300">{otpSentEmail}</span></p>
+                    </div>
+                  </div>
 
-              <Button type="submit" className={btnPrimary} disabled={loading}>
-                {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending OTP...</> : 'Sign Up'}
-              </Button>
+                  <div className="flex justify-center">
+                    <InputOTP maxLength={6} value={signupOtp} onChange={setSignupOtp} onComplete={handleSignupOtpComplete}>
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} />
+                        <InputOTPSlot index={1} />
+                        <InputOTPSlot index={2} />
+                      </InputOTPGroup>
+                      <InputOTPSeparator />
+                      <InputOTPGroup>
+                        <InputOTPSlot index={3} />
+                        <InputOTPSlot index={4} />
+                        <InputOTPSlot index={5} />
+                      </InputOTPGroup>
+                    </InputOTP>
+                  </div>
 
-              <OrDivider />
+                  <FormErrorBanner message={formError} />
+                  {isSandboxMode && sandboxOtp && <SandboxBanner otp={sandboxOtp} detail={emailErrorDetail} />}
 
-              <button type="button" onClick={handleGoogleLogin} className="w-full flex items-center justify-center gap-2.5 h-11 rounded-lg border border-[#E5E7EB] bg-white hover:bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 dark:text-gray-300 font-medium text-sm transition-colors">
-                <GoogleIcon className="h-5 w-5" /> Google
-              </button>
+                  {loading && (
+                    <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Creating account...
+                    </div>
+                  )}
 
-              <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-                Already have an account?{' '}
-                <button type="button" onClick={switchToLogin} className={linkClass}>Sign In</button>
-              </p>
-            </form>
-          )}
-
-          {/* ─── SIGNUP OTP ─── */}
-          {step === 'signup-otp' && (
-            <div className="space-y-6">
-              <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
-                <ArrowLeft className="h-4 w-4" /> Back
-              </button>
-
-              <div className="space-y-4">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20">
-                  <ShieldCheck className="h-6 w-6 text-[#3B82F6]" />
-                </div>
-                <div className="text-center">
-                  <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Verify Email</h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Code sent to <span className="font-medium text-gray-700 dark:text-gray-300">{otpSentEmail}</span></p>
-                </div>
-              </div>
-
-              <div className="flex justify-center">
-                <InputOTP maxLength={6} value={signupOtp} onChange={setSignupOtp} onComplete={handleSignupOtpComplete}>
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} />
-                    <InputOTPSlot index={1} />
-                    <InputOTPSlot index={2} />
-                  </InputOTPGroup>
-                  <InputOTPSeparator />
-                  <InputOTPGroup>
-                    <InputOTPSlot index={3} />
-                    <InputOTPSlot index={4} />
-                    <InputOTPSlot index={5} />
-                  </InputOTPGroup>
-                </InputOTP>
-              </div>
-
-              <FormErrorBanner message={formError} />
-              {isSandboxMode && sandboxOtp && <SandboxBanner otp={sandboxOtp} detail={emailErrorDetail} />}
-
-              {loading && (
-                <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Creating account...
+                  <div className="text-center">
+                    {otpCooldown > 0 ? (
+                      <p className="text-sm text-gray-500">Resend in <span className="font-medium text-[#3B82F6]">{otpCooldown}s</span></p>
+                    ) : (
+                      <button type="button" onClick={() => sendOtp(signupEmail, 'signup')} className={`text-sm ${linkClass}`}>
+                        Resend code
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 
-              <div className="text-center">
-                {otpCooldown > 0 ? (
-                  <p className="text-sm text-gray-500">Resend in <span className="font-medium text-[#3B82F6]">{otpCooldown}s</span></p>
-                ) : (
-                  <button type="button" onClick={() => sendOtp(signupEmail, 'signup')} className={`text-sm ${linkClass}`}>
-                    Resend code
+              {/* ─── FORGOT EMAIL ─── */}
+              {displayStep === 'forgot-email' && (
+                <form onSubmit={handleForgotEmailSubmit} className="space-y-4">
+                  <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
+                    <ArrowLeft className="h-4 w-4" /> Back
                   </button>
-                )}
-              </div>
+
+                  <div className="space-y-4">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20">
+                      <KeyRound className="h-6 w-6 text-[#3B82F6]" />
+                    </div>
+                    <div className="text-center">
+                      <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Forgot Password</h2>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Enter your email and we&apos;ll send you a code to reset your password</p>
+                    </div>
+                  </div>
+
+                  <FormErrorBanner message={formError} />
+                  {isSandboxMode && sandboxOtp && <SandboxBanner otp={sandboxOtp} detail={emailErrorDetail} />}
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="forgot-email" className="text-sm font-medium text-gray-700 dark:text-gray-300">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input id="forgot-email" type="email" placeholder="admin@store.com" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} className={inputClass} required />
+                    </div>
+                  </div>
+
+                  <Button type="submit" className={btnPrimary} disabled={loading}>
+                    {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Sending...</> : 'Send Reset Code'}
+                  </Button>
+                </form>
+              )}
+
+              {/* ─── FORGOT OTP ─── */}
+              {displayStep === 'forgot-otp' && (
+                <div className="space-y-6">
+                  <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
+                    <ArrowLeft className="h-4 w-4" /> Back
+                  </button>
+
+                  <div className="space-y-4">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20">
+                      <ShieldCheck className="h-6 w-6 text-[#3B82F6]" />
+                    </div>
+                    <div className="text-center">
+                      <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Verify Code</h2>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Code sent to <span className="font-medium text-gray-700 dark:text-gray-300">{otpSentEmail}</span></p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-center">
+                    <InputOTP maxLength={6} value={forgotOtp} onChange={setForgotOtp} onComplete={handleForgotOtpComplete}>
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} />
+                        <InputOTPSlot index={1} />
+                        <InputOTPSlot index={2} />
+                      </InputOTPGroup>
+                      <InputOTPSeparator />
+                      <InputOTPGroup>
+                        <InputOTPSlot index={3} />
+                        <InputOTPSlot index={4} />
+                        <InputOTPSlot index={5} />
+                      </InputOTPGroup>
+                    </InputOTP>
+                  </div>
+
+                  <FormErrorBanner message={forgotFormError} />
+                  {isSandboxMode && sandboxOtp && <SandboxBanner otp={sandboxOtp} detail={emailErrorDetail} />}
+
+                  <div className="text-center">
+                    {otpCooldown > 0 ? (
+                      <p className="text-sm text-gray-500">Resend in <span className="font-medium text-[#3B82F6]">{otpCooldown}s</span></p>
+                    ) : (
+                      <button type="button" onClick={resendForgotOtp} className={`text-sm ${linkClass}`}>
+                        Resend code
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ─── FORGOT RESET ─── */}
+              {displayStep === 'forgot-reset' && (
+                <form onSubmit={handleForgotResetSubmit} className="space-y-4">
+                  <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
+                    <ArrowLeft className="h-4 w-4" /> Back
+                  </button>
+
+                  <div className="space-y-4">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20">
+                      <Lock className="h-6 w-6 text-[#3B82F6]" />
+                    </div>
+                    <div className="text-center">
+                      <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Reset Password</h2>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Create a new password for your account</p>
+                    </div>
+                  </div>
+
+                  <FormErrorBanner message={forgotFormError} />
+
+                  {/* New Password */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="forgot-new-password" className="text-sm font-medium text-gray-700 dark:text-gray-300">New Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input id="forgot-new-password" type={showForgotNewPassword ? 'text' : 'password'} placeholder="Min 6 characters" value={forgotNewPassword} onChange={(e) => setForgotNewPassword(e.target.value)} className={inputClass + ' pr-10'} required />
+                      <button type="button" onClick={() => setShowForgotNewPassword(!showForgotNewPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                        {showForgotNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    {/* Password strength indicator */}
+                    {pwdStrength.score > 0 && (
+                      <div className="space-y-1.5">
+                        <div className="h-1 w-full rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+                          <div className={cn("h-full rounded-full transition-all duration-300", pwdStrength.color, pwdStrength.width)} />
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{pwdStrength.label}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Confirm Password */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="forgot-confirm-password" className="text-sm font-medium text-gray-700 dark:text-gray-300">Confirm Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input id="forgot-confirm-password" type="password" placeholder="Confirm new password" value={forgotConfirmPassword} onChange={(e) => setForgotConfirmPassword(e.target.value)} className={inputClass} required />
+                    </div>
+                    {/* Inline validation for confirm password */}
+                    {forgotConfirmPassword.length > 0 && forgotNewPassword !== forgotConfirmPassword && (
+                      <p className="text-xs text-red-500">Passwords do not match</p>
+                    )}
+                  </div>
+
+                  <Button type="submit" className={btnPrimary} disabled={loading}>
+                    {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Updating...</> : 'Reset Password'}
+                  </Button>
+                </form>
+              )}
+
             </div>
-          )}
+          </div>
 
         </div>
         </div>
