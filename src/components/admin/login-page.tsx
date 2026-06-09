@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import {
   Mail, Lock, User, Eye, EyeOff, Loader2, ArrowLeft, ShieldCheck,
   AlertCircle, CheckCircle2, XCircle, Info,
+  ShoppingCart, Package, BarChart3, ShieldCheck as ShieldIcon,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -374,28 +375,29 @@ export function LoginPage() {
   const linkClass = "text-[#3B82F6] hover:text-[#2563EB] font-medium transition-colors"
 
   return (
-    <div className="min-h-screen flex p-[15px] bg-white dark:bg-slate-950">
+    <div className="min-h-screen flex p-3 sm:p-4 lg:p-[15px] bg-white dark:bg-slate-950">
       <ThemedToast toasts={toasts} onDismiss={dismissToast} />
 
       {/* ═══════ LEFT: Form Panel ═══════ */}
       <div className="w-full lg:w-1/2 flex flex-col bg-white dark:bg-slate-950 relative">
 
         {/* Logo pinned at top */}
-        <div className="flex-shrink-0 flex justify-center px-8 sm:px-12 lg:px-16 pt-8 pb-4">
+        <div className="flex-shrink-0 flex justify-center px-6 sm:px-10 lg:px-16 pt-6 sm:pt-8 lg:pt-8 pb-2">
           <div className="w-full max-w-[400px]">
-            <img src="/logo.png" alt="NexCommerce" className="h-9 w-auto object-contain" />
+            <img src="/logo.png" alt="NexCommerce" className="h-8 sm:h-9 w-auto object-contain" />
           </div>
         </div>
 
         {/* Form centered in remaining space */}
-        <div className="flex-1 flex flex-col items-center justify-center px-8 sm:px-12 lg:px-16">
+        <div className="flex-1 flex flex-col items-center justify-center px-6 sm:px-10 lg:px-16 py-6 sm:py-8">
         <div className="w-full max-w-[400px]">
 
           {/* ─── LOGIN FORM ─── */}
           {step === 'login-form' && (
             <form onSubmit={handleLoginSubmit} className="space-y-4">
               <div>
-                <h2 className="text-[24px] font-bold text-gray-900 dark:text-gray-100 leading-tight">Welcome back</h2>
+                <h2 className="text-xl sm:text-2xl lg:text-[24px] font-bold text-gray-900 dark:text-gray-100 leading-tight">Welcome back</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">Sign in to access your dashboard</p>
               </div>
 
               <FormErrorBanner message={formError} />
@@ -507,7 +509,8 @@ export function LoginPage() {
           {step === 'signup-form' && (
             <form onSubmit={handleSignupSubmit} className="space-y-4">
               <div>
-                <h2 className="text-[24px] font-bold text-gray-900 dark:text-gray-100 leading-tight">Create account</h2>
+                <h2 className="text-xl sm:text-2xl lg:text-[24px] font-bold text-gray-900 dark:text-gray-100 leading-tight">Create account</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">Get started with your free NexCommerce store</p>
               </div>
 
               <FormErrorBanner message={formError} />
@@ -627,7 +630,7 @@ export function LoginPage() {
       </div>
 
       {/* ═══════ RIGHT: Hero Panel ═══════ */}
-      <div className="hidden lg:flex w-1/2 flex-col items-start justify-center p-[50px] relative overflow-hidden bg-gradient-to-br from-[#3B82F6] to-[#1E40AF] rounded-[10px]">
+      <div className="hidden lg:flex w-1/2 flex-col items-start justify-center p-8 xl:p-[50px] relative overflow-hidden bg-gradient-to-br from-[#3B82F6] to-[#1E40AF] rounded-[10px]">
         {/* Ambient glow */}
         <div className="absolute inset-0">
           <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-blue-400/10 rounded-full blur-3xl" />
@@ -635,20 +638,44 @@ export function LoginPage() {
         </div>
 
         <div className="relative z-10 w-full flex flex-col items-start">
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/10 mb-6">
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-xs sm:text-sm font-medium text-white/90">Multi-tenant SaaS Platform</span>
+          </div>
+
           {/* Title */}
-          <h2 className="text-[34px] sm:text-[42px] font-semibold text-white text-left leading-[1.3] mb-4">
-            Manage your store,<br />all in one place.
+          <h2 className="text-[28px] lg:text-[34px] xl:text-[42px] font-bold text-white text-left leading-[1.2] lg:leading-[1.25] mb-4 tracking-tight">
+            The smarter way to manage your WooCommerce store.
           </h2>
-          <p className="text-white/80 text-left text-lg leading-relaxed mb-8">
-            Plan. Build. Track. Deliver.
+          <p className="text-white/75 text-left text-sm lg:text-base xl:text-lg leading-relaxed mb-8 max-w-lg">
+            NexCommerce gives you complete control over products, orders, analytics, and customer experience — all from one powerful dashboard built for modern commerce.
           </p>
+
+          {/* Feature Highlights */}
+          <div className="grid grid-cols-2 gap-3 lg:gap-4 mb-8 w-full max-w-md">
+            {[
+              { icon: ShoppingCart, label: 'Order Management', desc: 'Track & fulfill effortlessly' },
+              { icon: Package, label: 'Product Catalog', desc: 'Organize your inventory' },
+              { icon: BarChart3, label: 'Analytics', desc: 'Data-driven decisions' },
+              { icon: ShieldIcon, label: 'Secure & Reliable', desc: 'Enterprise-grade security' },
+            ].map((item) => (
+              <div key={item.label} className="flex items-start gap-2.5 p-3 rounded-lg bg-white/[0.07] border border-white/[0.08]">
+                <item.icon className="h-4 w-4 mt-0.5 text-blue-200 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs lg:text-sm font-semibold text-white leading-tight">{item.label}</p>
+                  <p className="text-[10px] lg:text-xs text-white/60 mt-0.5 leading-snug">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
 
           {/* Illustration */}
           <div className="w-full flex-1 min-h-0 flex items-center justify-center">
             <img
               src="/login-illustration.png"
               alt="NexCommerce Dashboard"
-              className="w-[95%] h-auto object-contain drop-shadow-2xl"
+              className="w-[90%] xl:w-[95%] h-auto object-contain drop-shadow-2xl"
             />
           </div>
         </div>
