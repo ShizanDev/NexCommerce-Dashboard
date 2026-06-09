@@ -113,7 +113,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       {/* ─── Header / Logo ─────────────────────────────── */}
-      <SidebarHeader className="border-b px-3 py-2.5 group-data-[collapsible=icon]:px-1.5 group-data-[collapsible=icon]:py-2 group-data-[collapsible=icon]:justify-center">
+      <SidebarHeader className="border-b h-14 gap-0 px-3 justify-center group-data-[collapsible=icon]:px-1.5 group-data-[collapsible=icon]:justify-center">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" className="hover:bg-transparent">
