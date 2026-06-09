@@ -116,16 +116,13 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" className="hover:bg-transparent">
-              <div className={`flex aspect-square size-8 items-center justify-center rounded-lg overflow-hidden shadow-sm ${isSuperAdmin ? 'ring-2 ring-amber-600' : 'ring-2 ring-blue-600'}`}>
-                <img src="/logo.svg" alt="NexCommerce" className="h-full w-full object-contain" />
+              {/* Full logo: visible when expanded, hidden when collapsed */}
+              <div className="flex items-center justify-start overflow-hidden group-data-[collapsible=icon]:hidden">
+                <img src="/logo.png" alt="NexCommerce" className="h-7 w-auto object-contain" />
               </div>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-bold">
-                  NexCommerce
-                </span>
-                <span className="truncate text-xs text-muted-foreground">
-                  {isSuperAdmin ? 'Platform Control' : 'Commerce Hub'}
-                </span>
+              {/* Favicon icon: visible when collapsed, hidden when expanded */}
+              <div className="flex items-center justify-center overflow-hidden group-data-[collapsible=icon]:flex hidden">
+                <img src="/favicon-icon.png" alt="NexCommerce" className="h-8 w-8 object-contain rounded-md" />
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>

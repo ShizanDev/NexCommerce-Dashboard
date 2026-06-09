@@ -216,3 +216,28 @@ Stage Summary:
 - User's custom logo now on login page, sidebar, and favicon
 - Right side illustration restored — was missing because files were deleted from public/
 - Login flow tested end-to-end: form → OTP → dashboard ✅
+---
+Task ID: 1
+Agent: Main Agent
+Task: Remove text next to logo everywhere, fix sidebar collapse behavior, apply user's logo/favicon
+
+Work Log:
+- Analyzed uploaded screenshots to understand UI issues
+- User provided logo (Logo DC.svg) and favicon (Favicon.svg) files
+- Converted SVGs (with embedded raster images) to PNG using sharp: logo.png (500x77), favicon.png (304x301), favicon-icon.png (64x64)
+- Copied user's Logo DC.svg → public/logo.svg and Favicon.svg → public/favicon.svg
+- Updated login page (login-page.tsx): Removed `<span>NexCommerce</span>` text next to logo, now only shows logo.png image
+- Updated sidebar (sidebar.tsx): Replaced logo+text header with conditional rendering:
+  - Expanded state: Shows full logo.png image
+  - Collapsed state: Shows favicon-icon.png (square icon)
+  - Uses group-data-[collapsible=icon]:hidden/flex for toggle
+- Updated footer text in page.tsx: Changed from "WC Dashboard" to "NexCommerce — Unified Commerce Operations Platform"
+- Verified sidebar collapse: CSS computed styles confirm correct display:none/flex toggle
+- Verified main content area properly adjusts when sidebar collapses (no text truncation)
+
+Stage Summary:
+- Login page: Only logo image shown, no separate text
+- Dashboard sidebar: Full logo when expanded, favicon icon when collapsed
+- Both admin and super admin share same sidebar component, so behavior is identical
+- Right-side illustration is now showing on login page
+- All changes verified via agent-browser

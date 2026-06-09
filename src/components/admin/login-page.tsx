@@ -384,11 +384,8 @@ export function LoginPage() {
           <div className="w-full max-w-[420px]">
 
             {/* Logo */}
-            <div className="flex items-center gap-2.5 mb-10">
-              <div className="h-9 w-9 rounded-lg overflow-hidden">
-                <img src="/logo.svg" alt="NexCommerce" className="h-full w-full object-contain" />
-              </div>
-              <span className="text-lg font-semibold text-gray-900 dark:text-gray-100">NexCommerce</span>
+            <div className="mb-10">
+              <img src="/logo.png" alt="NexCommerce" className="h-9 w-auto object-contain" />
             </div>
 
             {/* ─── LOGIN FORM ─── */}

@@ -163,7 +163,7 @@ export default function Home() {
           {renderView()}
         </main>
         <footer className="border-t px-6 py-3 text-center text-xs text-muted-foreground">
-          WC Dashboard — WooCommerce Order Management System &bull; Built with Next.js 16
+          &copy; {new Date().getFullYear()} NexCommerce &mdash; Unified Commerce Operations Platform
         </footer>
       </SidebarInset>
       <Toaster position="top-right" richColors />
