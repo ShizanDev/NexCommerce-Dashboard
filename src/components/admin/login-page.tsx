@@ -381,8 +381,10 @@ export function LoginPage() {
       <div className="w-full lg:w-1/2 flex flex-col bg-white dark:bg-slate-950 relative">
 
         {/* Logo pinned at top */}
-        <div className="flex-shrink-0 px-8 sm:px-12 lg:px-16 pt-8 pb-4">
-          <img src="/logo.png" alt="NexCommerce" className="h-9 w-auto object-contain" />
+        <div className="flex-shrink-0 flex justify-center px-8 sm:px-12 lg:px-16 pt-8 pb-4">
+          <div className="w-full max-w-[400px]">
+            <img src="/logo.png" alt="NexCommerce" className="h-9 w-auto object-contain" />
+          </div>
         </div>
 
         {/* Form centered in remaining space */}
