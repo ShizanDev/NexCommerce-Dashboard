@@ -173,12 +173,19 @@
   }
 }
 
-/* Smooth theme transition on all color properties */
+/* Smooth theme transition on all color + visual properties */
 html,
 html *,
 html *::before,
 html *::after {
-  transition-property: background-color, border-color, color, box-shadow;
+  transition-property: background-color, border-color, color, box-shadow, opacity, transform;
+  transition-duration: 0.2s;
+  transition-timing-function: ease-in-out;
+}
+
+/* Ensure interactive elements have smooth hover/active states */
+a, button, [role="button"], input, select, textarea, [role="switch"] {
+  transition-property: background-color, border-color, color, box-shadow, opacity, transform;
   transition-duration: 0.2s;
   transition-timing-function: ease-in-out;
 }

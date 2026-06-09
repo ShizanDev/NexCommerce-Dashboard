@@ -298,7 +298,7 @@ export default function DashboardView() {
                       <TableCell>
                         <Badge
                           variant="secondary"
-                          className={statusColors[order.status] || 'bg-gray-100 text-gray-800'}
+                          className={statusColors[order.status] || 'bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-300'}
                         >
                           {order.status.replace(/-/g, ' ')}
                         </Badge>

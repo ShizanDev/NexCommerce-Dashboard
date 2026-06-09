@@ -599,12 +599,12 @@ export default function SuperAdminAnalytics() {
                         <div
                           className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white ${
                             idx === 0
-                              ? 'bg-amber-500'
+                              ? 'bg-amber-500 dark:bg-amber-400'
                               : idx === 1
-                                ? 'bg-gray-400'
+                                ? 'bg-gray-400 dark:bg-gray-500'
                                 : idx === 2
-                                  ? 'bg-amber-700'
-                                  : 'bg-gray-300'
+                                  ? 'bg-amber-700 dark:bg-amber-600'
+                                  : 'bg-gray-300 dark:bg-gray-600'
                           }`}
                         >
                           {idx + 1}

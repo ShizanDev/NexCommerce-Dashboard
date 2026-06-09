@@ -809,13 +809,13 @@ export function LoginPage() {
               {/* ─── SIGNUP OTP ─── */}
               {displayStep === 'signup-otp' && (
                 <div className="space-y-6">
-                  <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-muted-foreground/60 dark:hover:text-gray-200 transition-colors">
+                  <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
                     <ArrowLeft className="h-4 w-4" /> Back
                   </button>
 
                   <div className="space-y-4">
                     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                      <ShieldCheck className="h-6 w-6 text-[#3B82F6]" />
+                      <ShieldCheck className="h-6 w-6 text-primary" />
                     </div>
                     <div className="text-center">
                       <h2 className="text-xl font-bold text-foreground">Verify Email</h2>
@@ -843,14 +843,14 @@ export function LoginPage() {
                   {isSandboxMode && sandboxOtp && <SandboxBanner otp={sandboxOtp} detail={emailErrorDetail} />}
 
                   {loading && (
-                    <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" /> Creating account...
                     </div>
                   )}
 
                   <div className="text-center">
                     {otpCooldown > 0 ? (
-                      <p className="text-sm text-gray-500">Resend in <span className="font-medium text-[#3B82F6]">{otpCooldown}s</span></p>
+                      <p className="text-sm text-muted-foreground">Resend in <span className="font-medium text-primary">{otpCooldown}s</span></p>
                     ) : (
                       <button type="button" onClick={() => sendOtp(signupEmail, 'signup')} className={`text-sm ${linkClass}`}>
                         Resend code
@@ -863,13 +863,13 @@ export function LoginPage() {
               {/* ─── FORGOT EMAIL ─── */}
               {displayStep === 'forgot-email' && (
                 <form onSubmit={handleForgotEmailSubmit} className="space-y-4">
-                  <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-muted-foreground/60 dark:hover:text-gray-200 transition-colors">
+                  <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
                     <ArrowLeft className="h-4 w-4" /> Back
                   </button>
 
                   <div className="space-y-4">
                     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                      <KeyRound className="h-6 w-6 text-[#3B82F6]" />
+                      <KeyRound className="h-6 w-6 text-primary" />
                     </div>
                     <div className="text-center">
                       <h2 className="text-xl font-bold text-foreground">Forgot Password</h2>
@@ -897,13 +897,13 @@ export function LoginPage() {
               {/* ─── FORGOT OTP ─── */}
               {displayStep === 'forgot-otp' && (
                 <div className="space-y-6">
-                  <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-muted-foreground/60 dark:hover:text-gray-200 transition-colors">
+                  <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
                     <ArrowLeft className="h-4 w-4" /> Back
                   </button>
 
                   <div className="space-y-4">
                     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                      <ShieldCheck className="h-6 w-6 text-[#3B82F6]" />
+                      <ShieldCheck className="h-6 w-6 text-primary" />
                     </div>
                     <div className="text-center">
                       <h2 className="text-xl font-bold text-foreground">Verify Code</h2>
@@ -932,7 +932,7 @@ export function LoginPage() {
 
                   <div className="text-center">
                     {otpCooldown > 0 ? (
-                      <p className="text-sm text-gray-500">Resend in <span className="font-medium text-[#3B82F6]">{otpCooldown}s</span></p>
+                      <p className="text-sm text-muted-foreground">Resend in <span className="font-medium text-primary">{otpCooldown}s</span></p>
                     ) : (
                       <button type="button" onClick={resendForgotOtp} className={`text-sm ${linkClass}`}>
                         Resend code
@@ -945,13 +945,13 @@ export function LoginPage() {
               {/* ─── FORGOT RESET ─── */}
               {displayStep === 'forgot-reset' && (
                 <form onSubmit={handleForgotResetSubmit} className="space-y-4">
-                  <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-muted-foreground/60 dark:hover:text-gray-200 transition-colors">
+                  <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
                     <ArrowLeft className="h-4 w-4" /> Back
                   </button>
 
                   <div className="space-y-4">
                     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                      <Lock className="h-6 w-6 text-[#3B82F6]" />
+                      <Lock className="h-6 w-6 text-primary" />
                     </div>
                     <div className="text-center">
                       <h2 className="text-xl font-bold text-foreground">Reset Password</h2>
