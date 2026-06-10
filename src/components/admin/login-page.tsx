@@ -233,310 +233,242 @@ export function LoginPage() {
 
   // ─── Session ──────────────────────────────────────────────────
 
-  function handleAuthSuccess(user: { id: string; email: string; name: string; role: string }, isNewUser: boolean) {
-    localStorage.removeItem('wc_dashboard_session')
-    const expiryMs = rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000
-    const session = {
-      isLoggedIn: true,
-      name: user.name,
-      email: user.email,
-      id: user.id,
-      role: user.role,
-      expiresAt: Date.now() + expiryMs,
-      rememberMe,
-    }
-    localStorage.setItem('wc_dashboard_session', JSON.stringify(session))
-    setLoggedIn(true, user.name, user.id, user.role)
-    if (isNewUser) showToast('success', `Welcome, ${user.name}!`, 'Your account has been created.', 4000)
-    else showToast('success', `Welcome back, ${user.name}!`, 3000)
+function handleAuthSuccess(
+  user: { id: string; email: string; name: string; role: string },
+  isNewUser: boolean
+) {
+  const expiryMs = rememberMe
+    ? 7 * 24 * 60 * 60 * 1000   // ✅ 7 days
+    : 24 * 60 * 60 * 1000       // ✅ 24 hours
+
+  const session = {
+    isLoggedIn: true,
+    name: user.name,
+    email: user.email,
+    id: user.id,
+    role: user.role,
+    expiresAt: Date.now() + expiryMs,
   }
 
-  // ─── OTP Send ──────────────────────────────────────────────────
+  localStorage.setItem('wc_dashboard_session', JSON.stringify(session))
+  setLoggedIn(true, user.name, user.id, user.role)
 
-  async function sendOtp(email: string, purpose: 'signup' | 'login') {
-    setLoading(true)
-    setLoadingMessage('Sending code...')
-    setEmailErrorDetail('')
-    try {
-      const res = await fetch('/api/auth/otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'send', email, purpose }),
-      })
-      const data = await res.json()
-
-      if (data.success) {
-        setOtpSentEmail(email)
-        setOtpCooldown(60)
-        if (data.sandboxMode && data.otp) {
-          setIsSandboxMode(true)
-          setSandboxOtp(data.otp)
-          setEmailErrorDetail(data.emailErrorDetail || '')
-        } else {
-          setIsSandboxMode(false)
-          setSandboxOtp('')
-          setEmailErrorDetail('')
-          showToast('success', 'OTP sent', `Check ${email}`, 6000)
-        }
-        return true
-      } else {
-        const errMap: Record<number, { title: string; desc: string }> = {
-          429: { title: 'Too many requests', desc: data.error || 'Wait before requesting again.' },
-          409: { title: 'Account exists', desc: 'Please sign in instead.' },
-          404: { title: 'Not found', desc: 'Please create an account first.' },
-        }
-        const err = errMap[res.status] || { title: 'Failed to send OTP', desc: data.error || 'Please try again.' }
-        showToast('error', err.title, err.desc)
-        return false
-      }
-    } catch {
-      showToast('error', 'Network error', 'Please try again.')
-      return false
-    } finally {
-      setLoading(false)
-      setLoadingMessage('')
-    }
-  }
-
+  if (isNewUser)
+    showToast('success', `Welcome, ${user.name}!`, 'Account created.', 4000)
+  else
+    showToast('success', `Welcome back, ${user.name}!`, '', 3000)
+}
+  
   // ─── Forgot Password: Send Reset Code ──────────────────────────
 
-  async function handleForgotEmailSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setForgotFormError('')
-    setLoading(true)
-    setLoadingMessage('Sending reset code...')
-    try {
-      const res = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: forgotEmail }),
-      })
-      const data = await res.json()
-      if (data.success) {
-        setOtpSentEmail(forgotEmail)
-        setOtpCooldown(60)
-        if (data.sandboxMode && data.otp) {
-          setIsSandboxMode(true)
-          setSandboxOtp(data.otp)
-          setEmailErrorDetail(data.emailErrorDetail || '')
-        } else {
-          setIsSandboxMode(false)
-          setSandboxOtp('')
-          setEmailErrorDetail('')
-          showToast('success', 'Reset code sent', `Check ${forgotEmail}`, 6000)
-        }
-        setStep('forgot-otp')
-      } else {
-        const errMap: Record<number, { title: string; desc: string }> = {
-          429: { title: 'Too many requests', desc: data.error || 'Wait before requesting again.' },
-          404: { title: 'Not found', desc: 'No account found with this email.' },
-        }
-        const err = errMap[res.status] || { title: 'Failed to send code', desc: data.error || 'Please try again.' }
-        showToast('error', err.title, err.desc)
-      }
-    } catch {
-      showToast('error', 'Network error', 'Please try again.')
-    } finally {
-      setLoading(false)
-      setLoadingMessage('')
-    }
+async function handleForgotEmailSubmit(e: React.FormEvent) {
+  e.preventDefault()
+  setForgotFormError('')
+
+  if (!forgotEmail) {
+    setForgotFormError('Please enter your email.')
+    return
   }
 
-  // ─── Forgot Password: Resend Reset Code ─────────────────────────
+  // Directly go to reset screen
+  setStep('forgot-reset')
+}
 
-  async function resendForgotOtp() {
-    setLoading(true)
-    setLoadingMessage('Sending reset code...')
-    try {
-      const res = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: forgotEmail }),
-      })
-      const data = await res.json()
-      if (data.success) {
-        setOtpCooldown(60)
-        if (data.sandboxMode && data.otp) {
-          setIsSandboxMode(true)
-          setSandboxOtp(data.otp)
-          setEmailErrorDetail(data.emailErrorDetail || '')
-        } else {
-          setIsSandboxMode(false)
-          setSandboxOtp('')
-          setEmailErrorDetail('')
-          showToast('success', 'Reset code resent', `Check ${forgotEmail}`, 6000)
-        }
-      } else {
-        const errMap: Record<number, { title: string; desc: string }> = {
-          429: { title: 'Too many requests', desc: data.error || 'Wait before requesting again.' },
-          404: { title: 'Not found', desc: 'No account found with this email.' },
-        }
-        const err = errMap[res.status] || { title: 'Failed to resend', desc: data.error || 'Please try again.' }
-        showToast('error', err.title, err.desc)
-      }
-    } catch {
-      showToast('error', 'Network error', 'Please try again.')
-    } finally {
-      setLoading(false)
-      setLoadingMessage('')
-    }
-  }
-
-  // ─── Forgot Password: OTP Complete → go to reset ──────────────
-
-  function handleForgotOtpComplete() {
-    if (forgotOtp.length !== 6) return
-    setForgotFormError('')
-    setStep('forgot-reset')
-  }
 
   // ─── Forgot Password: Reset Password ──────────────────────────
 
-  async function handleForgotResetSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setForgotFormError('')
-    if (forgotNewPassword.length < 6) {
-      setForgotFormError('Password must be at least 6 characters.')
-      return
-    }
-    if (forgotNewPassword !== forgotConfirmPassword) {
-      setForgotFormError('Passwords do not match')
-      return
-    }
-    setLoading(true)
-    setLoadingMessage('Updating password...')
-    try {
-      const res = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: forgotEmail, otp: forgotOtp, newPassword: forgotNewPassword }),
-      })
-      const data = await res.json()
-      if (data.success) {
-        showToast('success', 'Password reset successful!', 'Please sign in with your new password.', 6000)
-        // Brief success state then redirect to login
-        setTimeout(() => {
-          goBackToLogin()
-        }, 500)
-      } else {
-        const errMap: Record<number, { title: string; desc: string }> = {
-          400: { title: 'Invalid request', desc: data.error || 'Please check your inputs.' },
-          429: { title: 'Too many requests', desc: 'Wait before trying again.' },
-        }
-        const err = errMap[res.status] || { title: 'Reset failed', desc: data.error || 'Please try again.' }
-        showToast('error', err.title, err.desc)
-      }
-    } catch {
-      showToast('error', 'Network error', 'Please try again.')
-    } finally {
-      setLoading(false)
-      setLoadingMessage('')
-    }
+async function handleForgotResetSubmit(e: React.FormEvent) {
+  e.preventDefault()
+  setForgotFormError('')
+
+  if (forgotNewPassword.length < 6) {
+    setForgotFormError('Password must be at least 6 characters.')
+    return
   }
 
-  // ─── Login submit ──────────────────────────────────────────────
+  if (forgotNewPassword !== forgotConfirmPassword) {
+    setForgotFormError('Passwords do not match')
+    return
+  }
 
-  async function handleLoginSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setFormError('')
-    setLoading(true)
-    setLoadingMessage('Verifying credentials...')
-    try {
-      const checkRes = await fetch('/api/auth/check', {
+  setLoading(true)
+  setLoadingMessage('Updating password...')
+
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/forgot-password`,
+      {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
-      })
-      const checkData = await checkRes.json()
-      if (!checkData.success) {
-        setFormError(checkData.error || 'Invalid credentials.')
-        setLoading(false)
-        setLoadingMessage('')
-        return
+        body: JSON.stringify({
+          email: forgotEmail,
+          newPassword: forgotNewPassword,
+        }),
       }
-    } catch {
-      setFormError('Network error.')
-      setLoading(false)
-      setLoadingMessage('')
+    )
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      setForgotFormError(data.error || 'Reset failed.')
       return
     }
+
+    showToast('success', 'Password updated!', 'You can now login.')
+    setStep('login-form')
+
+  } catch {
+    setForgotFormError('Network error.')
+  } finally {
     setLoading(false)
     setLoadingMessage('')
-    const sent = await sendOtp(loginEmail, 'login')
-    if (sent) setStep('login-otp')
   }
+}
+// ─── Login submit ──────────────────────────────────────────────
 
-  // ─── Login OTP ──────────────────────────────────────────────────
+// ✅ Auto verify token on page load
+useEffect(() => {
+  const stored = localStorage.getItem('wc_dashboard_session')
+  if (!stored) return
 
-  async function handleLoginOtpComplete() {
-    if (loginOtp.length !== 6) return
-    setLoading(true)
-    setLoadingMessage('Verifying code...')
-    setFormError('')
-    try {
-      const res = await fetch('/api/auth/login', {
+  try {
+    const session = JSON.parse(stored)
+
+    // ✅ Expiry check
+    if (Date.now() > session.expiresAt) {
+      localStorage.removeItem('wc_dashboard_session')
+      localStorage.removeItem('token')
+      return
+    }
+
+    setLoggedIn(true, session.name, session.id, session.role)
+
+  } catch {
+    localStorage.removeItem('wc_dashboard_session')
+    localStorage.removeItem('token')
+  }
+}, [])
+
+async function handleLoginSubmit(e: React.FormEvent) {
+  e.preventDefault()
+  setFormError('')
+  setLoading(true)
+  setLoadingMessage('Signing in...')
+
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/login`,
+      {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: loginEmail, password: loginPassword, otp: loginOtp }),
-      })
-      const data = await res.json()
-      if (data.success) handleAuthSuccess(data.user, false)
-      else setFormError(data.error || 'Login failed.')
-    } catch {
-      setFormError('Network error.')
-    } finally {
+        body: JSON.stringify({
+          email: loginEmail,
+          password: loginPassword,
+        }),
+      }
+    )
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      setFormError(data.error || 'Invalid credentials.')
       setLoading(false)
       setLoadingMessage('')
+      return
     }
+
+    // ✅ Save JWT token
+   if (rememberMe) {
+  localStorage.setItem('token', data.token)
+  } else {
+  sessionStorage.setItem('token', data.token)
   }
+
+    // ✅ Save session using existing system
+    handleAuthSuccess(data.user, false)
+
+  } catch {
+    setFormError('Network error.')
+  } finally {
+    setLoading(false)
+    setLoadingMessage('')
+  }
+}
 
   // ─── Signup submit ─────────────────────────────────────────────
 
-  async function handleSignupSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setFormError('')
-    if (signupName.trim().length < 2) { setFormError('Enter your full name.'); return }
-    if (signupPassword.length < 6) { setFormError('Password must be at least 6 characters.'); return }
-    if (signupPassword !== signupConfirmPassword) { setFormError('Passwords do not match.'); return }
-    setLoading(true)
-    setLoadingMessage('Creating account...')
-    const sent = await sendOtp(signupEmail, 'signup')
-    if (!sent) {
-      setLoading(false)
-      setLoadingMessage('')
-    }
-    if (sent) setStep('signup-otp')
+ async function handleSignupSubmit(e: React.FormEvent) {
+  e.preventDefault()
+  setFormError('')
+
+  if (signupName.trim().length < 2) {
+    setFormError('Enter your full name.')
+    return
   }
 
-  // ─── Signup OTP ────────────────────────────────────────────────
+  if (signupPassword.length < 6) {
+    setFormError('Password must be at least 6 characters.')
+    return
+  }
 
-  async function handleSignupOtpComplete() {
-    if (signupOtp.length !== 6) return
-    setLoading(true)
-    setLoadingMessage('Creating account...')
-    setFormError('')
-    try {
-      const res = await fetch('/api/auth/setup', {
+  if (signupPassword !== signupConfirmPassword) {
+    setFormError('Passwords do not match.')
+    return
+  }
+
+  setLoading(true)
+  setLoadingMessage('Creating account...')
+
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/register`,
+      {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: signupEmail, password: signupPassword, name: signupName, otp: signupOtp }),
-      })
-      const data = await res.json()
-      if (data.success) handleAuthSuccess(data.user, true)
-      else {
-        if (data.userExists) {
-          showToast('error', 'Account exists', 'Please sign in instead.')
-          setStep('login-form'); setLoginEmail(signupEmail)
-        } else setFormError(data.error || 'Signup failed.')
+        body: JSON.stringify({
+          name: signupName,
+          email: signupEmail,
+          password: signupPassword,
+        }),
       }
-    } catch {
-      setFormError('Network error.')
-    } finally {
+    )
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      setFormError(data.error || 'Signup failed.')
       setLoading(false)
       setLoadingMessage('')
+      return
     }
-  }
 
+    // ✅ After signup, auto login
+    const loginRes = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/login`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: signupEmail,
+          password: signupPassword,
+        }),
+      }
+    )
+
+    const loginData = await loginRes.json()
+
+    if (loginRes.ok) {
+      localStorage.setItem('token', loginData.token)
+      handleAuthSuccess(loginData.user, true)
+    }
+
+  } catch {
+    setFormError('Network error.')
+  } finally {
+    setLoading(false)
+    setLoadingMessage('')
+  }
+}
   // ─── Google ────────────────────────────────────────────────────
 
   function handleGoogleLogin() {
@@ -691,7 +623,7 @@ export function LoginPage() {
               )}
 
               {/* ─── LOGIN OTP ─── */}
-              {displayStep === 'login-otp' && (
+              {/* {displayStep === 'login-otp' && (
                 <div className="space-y-6">
                   <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
                     <ArrowLeft className="h-4 w-4" /> Back
@@ -742,7 +674,7 @@ export function LoginPage() {
                     )}
                   </div>
                 </div>
-              )}
+              )} */}
 
               {/* ─── SIGNUP FORM ─── */}
               {displayStep === 'signup-form' && (
@@ -807,7 +739,7 @@ export function LoginPage() {
               )}
 
               {/* ─── SIGNUP OTP ─── */}
-              {displayStep === 'signup-otp' && (
+              {/* {displayStep === 'signup-otp' && (
                 <div className="space-y-6">
                   <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
                     <ArrowLeft className="h-4 w-4" /> Back
@@ -858,7 +790,7 @@ export function LoginPage() {
                     )}
                   </div>
                 </div>
-              )}
+              )} */}
 
               {/* ─── FORGOT EMAIL ─── */}
               {displayStep === 'forgot-email' && (
@@ -895,7 +827,7 @@ export function LoginPage() {
               )}
 
               {/* ─── FORGOT OTP ─── */}
-              {displayStep === 'forgot-otp' && (
+              {/* {displayStep === 'forgot-otp' && (
                 <div className="space-y-6">
                   <button type="button" onClick={goBack} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
                     <ArrowLeft className="h-4 w-4" /> Back
@@ -940,7 +872,7 @@ export function LoginPage() {
                     )}
                   </div>
                 </div>
-              )}
+              )} */}
 
               {/* ─── FORGOT RESET ─── */}
               {displayStep === 'forgot-reset' && (
